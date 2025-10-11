@@ -1,0 +1,9 @@
+version: "3"
+
+tasks:
+  password-hash:
+    aliases:
+      - ph
+    desc: "Generate a hashed password for autoinstall.yaml. The output format is $algo$salt$hash"
+    cmds:
+      - mkpasswd -m sha-512
