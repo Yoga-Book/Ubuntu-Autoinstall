@@ -67,3 +67,41 @@ tasks:
         fi
         sudo cp -v "$PATCH_GRUB_DIR"/* "$EXTRACT_DIR/boot/grub/"
         echo "Patched grub files copied to $EXTRACT_DIR/boot/grub/"
+
+  remaster:
+    desc: "Create a remastered ISO from the extracted and patched directory using xorriso."
+    cmds:
+      - |
+        if [ -z "$ISO_FILE" ]; then
+          echo "Error: Please set ISO_FILE in your environment or .env file, e.g. ISO_FILE=DATA/ISO/official/ubuntu-24.04.3-desktop-amd64.iso" >&2
+          exit 1
+        fi
+        ISO_BASENAME="$(basename "$ISO_FILE")"
+        ISO_NAME="${ISO_BASENAME%.iso}"
+        EXTRACT_DIR="DATA/ISO/extracted/$ISO_NAME"
+        OUTPUT_DIR="DATA/ISO/remastered"
+        OUTPUT_ISO="$OUTPUT_DIR/${ISO_NAME}-autoinstall.iso"
+        # Shorten volume ID to max 32 chars
+        VOLID="${ISO_NAME}-autoinstall"
+        VOLID="${VOLID:0:32}"
+        ELTORITO_IMG="$EXTRACT_DIR/boot/grub/i386-pc/eltorito.img"
+        if [ ! -d "$EXTRACT_DIR" ]; then
+          echo "Error: Extracted ISO directory $EXTRACT_DIR does not exist. Run the extract and patch tasks first." >&2
+          exit 1
+        fi
+        if [ ! -f "$ELTORITO_IMG" ]; then
+          echo "Error: El Torito image $ELTORITO_IMG not found." >&2
+          exit 1
+        fi
+        mkdir -p "$OUTPUT_DIR"
+        sudo xorriso -as mkisofs \
+          -r -V "$VOLID" \
+          -o "$OUTPUT_ISO" \
+          -J -l -cache-inodes \
+          -c boot.catalog \
+          -b boot/grub/i386-pc/eltorito.img \
+          -no-emul-boot -boot-load-size 4 -boot-info-table \
+          "$EXTRACT_DIR"
+        # Fix ownership of the remastered ISO to the current user
+        sudo chown "$USER":"$USER" "$OUTPUT_ISO"
+        echo "Remastered ISO created at $OUTPUT_ISO and ownership set to $USER"
