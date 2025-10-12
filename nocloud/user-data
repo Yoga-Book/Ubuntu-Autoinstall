@@ -1,0 +1,14 @@
+#cloud-config
+autoinstall:
+  version: 1
+  locale: en_US.UTF-8
+  keyboard:
+    layout: it
+    variant: ""
+  identity:
+    hostname: "yoga"
+    username: "yoga"
+    password: "$6$fywbi1lu3Ea97e9V$4hq1EHmuvkk3/lX9TUyuvnr4eleA76apESfZZioPUn2X0FMOCa5guFWvw7i6QS9vOwdFPwgE9hfWfHi7V1HjV."
+  storage:
+    layout:
+      name: direct
