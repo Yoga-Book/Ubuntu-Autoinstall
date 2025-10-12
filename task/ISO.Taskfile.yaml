@@ -127,3 +127,7 @@ tasks:
         # Fix ownership of the remastered ISO to the current user
         sudo chown "$USER":"$USER" "$OUTPUT_ISO"
         echo "Remastered ISO created at $OUTPUT_ISO and ownership set to $USER"
+  rm-remaster:
+    desc: "Remove remastered ISO files except .gitkeep"
+    cmds:
+      - sudo find DATA/ISO/remastered -mindepth 1 ! -name '.gitkeep' -exec rm -rf {} +
