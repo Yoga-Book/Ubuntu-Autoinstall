@@ -39,6 +39,11 @@ tasks:
     desc: "Remove extracted ISO directories except .gitkeep"
     cmds:
       - sudo find DATA/ISO/extracted -mindepth 1 ! -name '.gitkeep' -exec rm -rf {} +
+  patch:
+    desc: "Run the cp-nocloud and cp-grub tasks to patch the extracted ISO."
+    cmds:
+      - task: cp-nocloud
+      - task: cp-grub
   cp-nocloud:
     desc: "Copy the nocloud directory to the extracted ISO directory using the $ISO_FILE environment variable."
     cmds:
