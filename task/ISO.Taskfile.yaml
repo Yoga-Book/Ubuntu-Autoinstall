@@ -106,13 +106,13 @@ tasks:
         # Shorten volume ID to max 32 chars
         VOLID="${ISO_NAME}-autoinstall"
         VOLID="${VOLID:0:32}"
-        ELTORITO_IMG="$EXTRACT_DIR/boot/grub/i386-pc/eltorito.img"
+        EFI_BOOT_IMG="$EXTRACT_DIR/EFI/boot/bootx64.efi"
         if [ ! -d "$EXTRACT_DIR" ]; then
           echo "Error: Extracted ISO directory $EXTRACT_DIR does not exist. Run the extract and patch tasks first." >&2
           exit 1
         fi
-        if [ ! -f "$ELTORITO_IMG" ]; then
-          echo "Error: El Torito image $ELTORITO_IMG not found." >&2
+        if [ ! -f "$EFI_BOOT_IMG" ]; then
+          echo "Error: EFI boot image $EFI_BOOT_IMG not found." >&2
           exit 1
         fi
         mkdir -p "$OUTPUT_DIR"
@@ -120,9 +120,8 @@ tasks:
           -r -V "$VOLID" \
           -o "$OUTPUT_ISO" \
           -J -l -cache-inodes \
-          -c boot.catalog \
-          -b boot/grub/i386-pc/eltorito.img \
-          -no-emul-boot -boot-load-size 4 -boot-info-table \
+          -e EFI/boot/bootx64.efi \
+          -no-emul-boot -isohybrid-gpt-basdat \
           "$EXTRACT_DIR"
         # Fix ownership of the remastered ISO to the current user
         sudo chown "$USER":"$USER" "$OUTPUT_ISO"
