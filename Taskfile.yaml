@@ -1,5 +1,9 @@
 version: "3"
 
+includes:
+  setup:
+    taskfile: task/Setup.Taskfile.yaml
+
 tasks:
   password-hash:
     aliases:

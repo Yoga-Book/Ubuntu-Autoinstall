@@ -1,0 +1,14 @@
+version: "3"
+
+tasks:
+  default:
+    cmds:
+      - sudo apt-get update
+      - sudo apt-get install -y whois
+      - sudo apt-get install -y xorriso
+      - sudo apt-get install -y genisoimage
+      - sudo apt-get install -y isolinux
+      - sudo apt-get install -y grub-pc-bin
+      - sudo apt-get install -y grub-efi-amd64-bin
+      - sudo apt-get install -y mtools
+      - sudo apt-get install -y rsync
