@@ -4,6 +4,23 @@ tasks:
   default:
     cmds:
       - echo "ISO Taskfile"
+  download:
+    desc: "Download the official ISO to DATA/ISO/official using the $ISO_URL environment variable."
+    cmds:
+      - |
+        if [ -z "$ISO_URL" ]; then
+          echo "Error: Please set ISO_URL in your environment or .env file, e.g. ISO_URL=https://releases.ubuntu.com/24.04.3/ubuntu-24.04.3-desktop-amd64.iso" >&2
+          exit 1
+        fi
+        mkdir -p DATA/ISO/official
+        ISO_BASENAME="$(basename "$ISO_URL")"
+        ISO_PATH="DATA/ISO/official/$ISO_BASENAME"
+        if [ -f "$ISO_PATH" ]; then
+          echo "ISO already downloaded at $ISO_PATH"
+        else
+          wget -O "$ISO_PATH" "$ISO_URL"
+          echo "Downloaded ISO to $ISO_PATH"
+        fi
   extract:
     desc: "Extract ISO contents to DATA/ISO/extracted/<iso-file-name> (without .iso) using the $ISO_FILE environment variable."
     cmds:
