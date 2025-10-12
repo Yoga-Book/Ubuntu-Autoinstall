@@ -1,5 +1,8 @@
 version: "3"
 
+dotenv:
+  - .env
+
 includes:
   setup:
     taskfile: task/Setup.Taskfile.yaml
