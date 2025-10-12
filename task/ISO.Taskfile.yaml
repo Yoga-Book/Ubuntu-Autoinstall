@@ -44,3 +44,26 @@ tasks:
         fi
         cp -r "$NO_CLOUD_DIR" "$EXTRACT_DIR/"
         echo "Copied $NO_CLOUD_DIR to $EXTRACT_DIR/"
+
+  cp-grub:
+    desc: "Copy the patched grub files to the extracted ISO directory using the $ISO_FILE environment variable."
+    cmds:
+      - |
+        if [ -z "$ISO_FILE" ]; then
+          echo "Error: Please set ISO_FILE in your environment or .env file, e.g. ISO_FILE=DATA/ISO/official/ubuntu-24.04.3-desktop-amd64.iso" >&2
+          exit 1
+        fi
+        ISO_BASENAME="$(basename "$ISO_FILE")"
+        ISO_NAME="${ISO_BASENAME%.iso}"
+        EXTRACT_DIR="DATA/ISO/extracted/$ISO_NAME"
+        PATCH_GRUB_DIR="patch/official/boot/grub"
+        if [ ! -d "$EXTRACT_DIR" ]; then
+          echo "Error: Extracted ISO directory $EXTRACT_DIR does not exist. Run the extract task first." >&2
+          exit 1
+        fi
+        if [ ! -d "$PATCH_GRUB_DIR" ]; then
+          echo "Error: $PATCH_GRUB_DIR directory not found in workspace root." >&2
+          exit 1
+        fi
+        sudo cp -v "$PATCH_GRUB_DIR"/* "$EXTRACT_DIR/boot/grub/"
+        echo "Patched grub files copied to $EXTRACT_DIR/boot/grub/"
