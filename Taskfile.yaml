@@ -7,3 +7,46 @@ tasks:
     desc: "Generate a hashed password for autoinstall.yaml. The output format is $algo$salt$hash"
     cmds:
       - mkpasswd -m sha-512
+  password-check:
+    aliases:
+      - pc
+    desc: "Check a password against a hashed password. Usage: task pc HASH='<full_hash>' [PASSWORD='<password>']"
+    silent: true
+    cmds:
+      - |
+        bash -c '
+        FULL_HASH="$1"
+        if [ -z "$FULL_HASH" ]; then
+          printf "Usage: task pc HASH=<full_hash> [PASSWORD=<password>]\n"
+          exit 2
+        fi
+        if ! command -v mkpasswd >/dev/null 2>&1; then
+          printf "Error: mkpasswd not found. Install the whois package (Debian/Ubuntu) or ensure mkpasswd is available.\n"
+          exit 2
+        fi
+        IFS="$" read -r _ ALG SALT HASHVAL <<< "$FULL_HASH"
+        if [ -z "$ALG" ] || [ -z "$SALT" ]; then
+          printf "Invalid hash format. Expected \\$algo\\$salt\\$hash.\n"
+          exit 2
+        fi
+        case "$ALG" in
+          6) METHOD=sha-512 ;;
+          5) METHOD=sha-256 ;;
+          1) METHOD=md5 ;;
+          *) printf "Unsupported algorithm id: %s\n" "$ALG"; exit 2 ;;
+        esac
+        if [ -n "$2" ]; then
+          PASSWORD="$2"
+        fi
+        if [ -z "${PASSWORD:-}" ]; then
+          read -s -p "Enter password: " PASSWORD; echo
+        fi
+        GEN_HASH=$(mkpasswd -m "$METHOD" -S "$SALT" "$PASSWORD")
+        if [ "$GEN_HASH" = "$FULL_HASH" ]; then
+          printf "Password matches.\n"
+          exit 0
+        else
+          printf "Password does not match.\n"
+          exit 1
+        fi
+        ' _ '{{.HASH}}' '{{.PASSWORD}}'
