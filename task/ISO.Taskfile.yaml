@@ -1,0 +1,24 @@
+version: "3"
+
+tasks:
+  default:
+    cmds:
+      - echo "ISO Taskfile"
+  extract:
+    desc: "Extract ISO contents to DATA/ISO/extracted/<iso-file-name> (without .iso) using the $ISO_FILE environment variable."
+    cmds:
+      - |
+        if [ -z "$ISO_FILE" ]; then
+          echo "Error: Please set ISO_FILE in your environment or .env file, e.g. ISO_FILE=DATA/ISO/official/ubuntu-24.04.3-desktop-amd64.iso" >&2
+          exit 1
+        fi
+        ISO_BASENAME="$(basename "$ISO_FILE")"
+        ISO_NAME="${ISO_BASENAME%.iso}"
+        EXTRACT_DIR="DATA/ISO/extracted/$ISO_NAME"
+        mkdir -p "$EXTRACT_DIR"
+        xorriso -osirrox on -indev "$ISO_FILE" -extract / "$EXTRACT_DIR"
+        echo "Extracted to $EXTRACT_DIR"
+  rm-extract:
+    desc: "Remove extracted ISO directories except .gitkeep"
+    cmds:
+      - sudo find DATA/ISO/extracted -mindepth 1 ! -name '.gitkeep' -exec rm -rf {} +

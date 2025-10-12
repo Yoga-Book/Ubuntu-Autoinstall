@@ -6,6 +6,8 @@ dotenv:
 includes:
   setup:
     taskfile: task/Setup.Taskfile.yaml
+  iso:
+    taskfile: task/ISO.Taskfile.yaml
 
 tasks:
   password-hash:
