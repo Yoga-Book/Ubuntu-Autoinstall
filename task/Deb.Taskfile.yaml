@@ -1,0 +1,14 @@
+version: "3"
+
+env:
+  GITHUB_RELEASE: "https://api.github.com/repos/jekhor/yogabook-linux/releases/latest"
+
+tasks:
+  download:
+    desc: "Download the Yoga Book Kernel & Drivers."
+    dir: DATA/DEB
+    cmds:
+      - |
+        curl -s "$GITHUB_RELEASE" \
+        | jq -r '.assets[] | select(.name | endswith(".deb")) | .browser_download_url' \
+        | xargs -n1 wget

@@ -8,6 +8,8 @@ includes:
     taskfile: task/Setup.Taskfile.yaml
   iso:
     taskfile: task/ISO.Taskfile.yaml
+  deb:
+    taskfile: task/Deb.Taskfile.yaml
 
 tasks:
   password-hash:
