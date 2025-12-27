@@ -12,3 +12,27 @@ tasks:
         curl -s "$GITHUB_RELEASE" \
         | jq -r '.assets[] | select(.name | endswith(".deb")) | .browser_download_url' \
         | xargs -n1 wget
+  embed:
+    desc: "Embed the Yoga Book Kernel & Drivers into the extracted ISO using the $ISO_FILE environment variable."
+    cmds:
+      - |
+        if [ -z "$ISO_FILE" ]; then
+          echo "Error: Please set ISO_FILE in your environment or .env file, e.g. ISO_FILE=DATA/ISO/official/ubuntu-24.04.3-desktop-amd64.iso" >&2
+          exit 1
+        fi
+        ISO_BASENAME="$(basename "$ISO_FILE")"
+        ISO_NAME="${ISO_BASENAME%.iso}"
+        EXTRACT_DIR="DATA/ISO/extracted/$ISO_NAME"
+        DEST_DIR="$EXTRACT_DIR/pool/yoga-book"
+        if [ ! -d "$EXTRACT_DIR" ]; then
+          echo "Error: Extracted ISO directory $EXTRACT_DIR does not exist. Run the iso:extract task first." >&2
+          exit 1
+        fi
+        DEB_FILES="$(find DATA/DEB -maxdepth 1 -type f -name '*.deb')"
+        if [ -z "$DEB_FILES" ]; then
+          echo "Error: No .deb files found in DATA/DEB. Download or place the packages first." >&2
+          exit 1
+        fi
+        sudo mkdir -p "$DEST_DIR"
+        sudo cp -v DATA/DEB/*.deb "$DEST_DIR/"
+        echo "Embedded .deb files into $DEST_DIR"
