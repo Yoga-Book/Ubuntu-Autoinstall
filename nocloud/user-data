@@ -12,3 +12,7 @@ autoinstall:
   storage:
     layout:
       name: direct
+  late-commands:
+    - curtin in-target -- dpkg -i /cdrom/pool/yoga-book/*.deb || true
+    - curtin in-target -- apt-get -f install -y
+    - curtin in-target -- update-grub
