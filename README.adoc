@@ -1,0 +1,101 @@
+= Ubuntu-Autoinstall
+:source-highlighter: rouge
+
+== Overview
+
+This project allows you to create a remastered Ubuntu ISO with autoinstall configurations.
+It automates the process of downloading the official Ubuntu ISO, extracting its contents, applying custom patches and autoinstall configurations, and repackaging it into a new ISO.
+
+This is especially useful to speed up the installation of the OS with predefined settings or if you are not able to attach a mouse and a keyboard to the machine for manual installation.
+
+== Supported OS
+
+This project has been tested on the following Operating Systems:
+
+* Ubuntu 24.04 LTS
+* Ubuntu 25.10
+
+== Requirements
+
+The automation and workflow in this project are primarily managed using the https://taskfile.dev[Task] command-line tool and a few `Taskfile.yaml` files. You can install Task by following the official documentation available at https://taskfile.dev/docs/installation.
+
+Other tools required for manipulating the ISO image and its contents are described in the table below and can be installed via `task setup`.
+
+[cols="1,2",options="header"]
+|===
+| Tool | Description
+| task | The Modern Task Runner. A fast, cross-platform build tool inspired by Make, designed for modern workflows.
+| whois | Utility for generating random passwords (used for autoinstall user setup)
+| xorriso | Tool to create, modify, and burn ISO images
+| genisoimage | Utility to create ISO 9660 filesystem images
+| isolinux | Bootloader for making ISOs bootable on BIOS systems
+| grub-pc-bin | GRUB bootloader binaries for BIOS systems
+| grub-efi-amd64-bin | GRUB bootloader binaries for UEFI systems
+| mtools | Utilities to access MS-DOS disks (used for EFI image manipulation)
+| rsync | Fast file copying and synchronization tool
+|===
+
+== Environment Variables
+
+This project relies on the following environment variables to customize its behavior. The default values are provided in the `.example.env` file:
+
+[source,shell]
+----
+cat .example.env
+ISO_URL="https://releases.ubuntu.com/24.04.3/ubuntu-24.04.3-desktop-amd64.iso"
+ISO_FILE="DATA/ISO/official/ubuntu-24.04.3-desktop-amd64.iso
+----
+
+To use the default values, simply run:
+
+[source,shell]
+----
+cp .example.env .env
+----
+
+You can also customize these variables in your `.env` file to use a different Ubuntu version or ISO source as needed.
+
+== Quickstart
+
+. Initial setup: Install the required packages
++
+[source,shell]
+----
+task setup
+----
+
+. Download the official Ubuntu ISO
++
+[source,shell]
+----
+task iso:download
+----
+The ISO will be placed in `DATA/ISO/official/`.
+
+. Extract the ISO
++
+[source,shell]
+----
+task iso:extract
+----
+. Apply patches and autoinstall config
++
+Edit `nocloud/user-data` and `nocloud/meta-data` as needed.
++
+[source,shell]
+----
+task iso:patch
+----
+. Remaster the ISO
++
+[source,shell]
+----
+task task iso:remaster
+----
+The new ISO will be in `DATA/ISO/remastered/`.
+
+== Cutomizations
+
+The default user is `yoga:yoga` as defined in `nocloud/user-data`.
+Feel free to change it as you prefer.
+To generate a new password hash run `task password-hash` and paste it in place of `identity.password` in `nocloud/user-data` before remastering the ISO.
