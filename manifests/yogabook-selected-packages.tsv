@@ -1,0 +1,5 @@
+alsa-ucm-conf-yogabook	1.4	all
+linux-headers-6.17.4-yogabook1	6.17.4-00016-g704990e9da51-15	amd64
+linux-image-6.17.4-yogabook1	6.17.4-00016-g704990e9da51-15	amd64
+touch-keyboard	1.4.3	amd64
+yogabook-support	1.5.ubuntu1	all

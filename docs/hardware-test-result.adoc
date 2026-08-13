@@ -1,0 +1,40 @@
+= YB1-X91L Hardware Acceptance Result
+
+Copy this file to a dated result file; do not overwrite the template.
+
+[cols="1,3",options="header"]
+|===
+| Field | Result
+| Date/time (Europe/Rome) | NOT TESTED
+| Tester | NOT TESTED
+| DMI product | NOT TESTED
+| eMMC model | NOT TESTED
+| Backup verified | NOT TESTED
+| Secure Boot disabled | NOT TESTED
+| ISO filename | NOT TESTED
+| ISO SHA256 | NOT TESTED
+| Installer log archive | NOT TESTED
+|===
+
+[cols="2,1,3",options="header"]
+|===
+| Check | Pass | Evidence/notes
+| Automatic installer poweroff | NO | NOT TESTED
+| Internal eMMC boot | NO | NOT TESTED
+| `uname -r` is `6.17.4-yogabook1` | NO | NOT TESTED
+| `dpkg --audit` is clean | NO | NOT TESTED
+| Offline `apt-get check` passes | NO | NOT TESTED
+| Five Yoga Book packages installed | NO | NOT TESTED
+| Touch keyboard | NO | NOT TESTED
+| Pen-mode switching | NO | NOT TESTED
+| Sound | NO | NOT TESTED
+| Rotation sensors | NO | NOT TESTED
+| Wi-Fi | NO | NOT TESTED
+| Bluetooth | NO | NOT TESTED
+| Suspend/resume | NO | NOT TESTED
+| Reboot | NO | NOT TESTED
+| Cameras (upstream unsupported) | N/A | Known limitation
+| X91L LTE modem (upstream unsupported) | N/A | Known limitation
+|===
+
+Overall status: *NOT TESTED — NOT RECOVERY-READY*

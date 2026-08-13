@@ -16,12 +16,55 @@ includes:
     taskfile: task/Deb.Taskfile.yaml
 
 tasks:
+  build:
+    desc: "Clean-build, validate, verify, and checksum the offline Yoga Book autoinstall ISO."
+    cmds:
+      - task: iso:clean
+      - task: iso:download
+      - task: deb:download
+      - task: deb:resolve
+      - task: iso:extract
+      - task: iso:patch
+      - task: iso:remaster
+      - echo "Clean verified build complete; see DATA/ISO/remastered/*.iso and its .sha256 sidecar."
+
+  build-vm-test:
+    desc: "Build a clearly named test-only ISO targeting /dev/vda (never use on physical hardware)."
+    cmds:
+      # Invoke a child Task process so these environment variables propagate
+      # through every nested build task (Task-local env does not do that).
+      - AUTOINSTALL_TEST_MODE=1 AUTOINSTALL_TARGET_DISK=/dev/vda task build
+
+  vm-test:
+    desc: "Run the NIC-less unattended QEMU install/boot acceptance test (build-vm-test first)."
+    env:
+      AUTOINSTALL_TEST_MODE: "1"
+      AUTOINSTALL_TARGET_DISK: "/dev/vda"
+    cmds:
+      - scripts/vm-test.sh
+
+  vm-test-gui:
+    desc: "Run the NIC-less QEMU acceptance test with GTK windows (build-vm-test first)."
+    env:
+      AUTOINSTALL_TEST_MODE: "1"
+      AUTOINSTALL_TARGET_DISK: "/dev/vda"
+      VM_TEST_DISPLAY: "gtk"
+      VM_TEST_NAME: "yogabook-test-gui"
+    cmds:
+      - scripts/vm-test.sh
+
   password-hash:
     aliases:
       - ph
-    desc: "Generate a hashed password for autoinstall.yaml. The output format is $algo$salt$hash"
+    desc: "Generate a SHA-512 crypt hash for manual user-data customization."
     cmds:
       - mkpasswd -m sha-512
+
+  test-render-autoinstall:
+    desc: "Verify tracked default credentials and production/VM disk rendering."
+    cmds:
+      - scripts/test-render-autoinstall.sh
+
   password-check:
     aliases:
       - pc

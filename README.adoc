@@ -1,138 +1,138 @@
-= Ubuntu-Autoinstall
+= Ubuntu 26.04 Offline Autoinstall for Lenovo Yoga Book YB1-X91L
 :source-highlighter: rouge
 
-== Overview
+== Scope and safety
 
-This project allows you to create a remastered Ubuntu ISO with autoinstall configurations.
-It automates the process of downloading the official Ubuntu ISO, extracting its contents, applying custom patches and autoinstall configurations, and repackaging it into a new ISO.
+This project builds a hybrid BIOS/UEFI Ubuntu 26.04 Desktop autoinstall ISO for the *Lenovo Yoga Book YB1-X91L*. It bundles the upstream Yoga Book kernel and support packages plus their Ubuntu dependency closure, so installation does not require a NIC.
 
-This is especially useful to speed up the installation of the OS with predefined settings or if you are not able to attach a mouse and a keyboard to the machine for manual installation.
+WARNING: The production image unconditionally erases the complete `/dev/mmcblk0` eMMC after its safety checks pass. Back up every required file before booting it. There is no in-place upgrade or preservation mode.
 
-== Supported OS
+The production installer aborts before storage is configured unless all of these conditions are true:
 
-This project has been tested on the following Operating Systems:
+* DMI product name is exactly `Lenovo YB1-X91L`.
+* `/dev/mmcblk0` exists and is non-removable.
+* The eMMC reports model `CWBD3R`.
+* UEFI Secure Boot is disabled.
 
-* Ubuntu 24.04 LTS
-* Ubuntu 25.10
+Secure Boot must remain disabled because `6.17.4-yogabook1` is unsigned. Ubuntu's generic 7.0 kernel remains installed as a GRUB fallback, while `GRUB_TOP_LEVEL` selects the Yoga Book kernel by default.
 
-Ubuntu 26.04 LTS is the current default build target. Its download and remaster structure are validated by the tasks, but a complete installation on the Yoga Book should still be tested before relying on the image for recovery.
+The cameras and X91L LTE modem are not supported by the upstream Yoga Book work and are not acceptance criteria.
 
 == Requirements
 
-The automation and workflow in this project are primarily managed using the https://taskfile.dev[Task] command-line tool and a few `Taskfile.yaml` files. You can install Task by following the official documentation available at https://taskfile.dev/docs/installation.
+Use an Ubuntu build host with Docker and https://taskfile.dev[Task]. Install the remaining tools with:
 
-Other tools required for manipulating the ISO image and its contents are described in the table below and can be installed via `task setup`.
-
-[cols="1,2",options="header"]
-|===
-| Tool | Description
-| task | The Modern Task Runner. A fast, cross-platform build tool inspired by Make, designed for modern workflows.
-| whois | Utility for generating random passwords (used for autoinstall user setup)
-| xorriso | Tool to create, modify, and burn ISO images
-| genisoimage | Utility to create ISO 9660 filesystem images
-| isolinux | Bootloader for making ISOs bootable on BIOS systems
-| grub-pc-bin | GRUB bootloader binaries for BIOS systems
-| grub-efi-amd64-bin | GRUB bootloader binaries for UEFI systems
-| mtools | Utilities to access MS-DOS disks (used for EFI image manipulation)
-| rsync | Fast file copying and synchronization tool
-|===
-
-`task deb:resolve` additionally requires Docker when you want to bundle the Ubuntu dependency closure for an installation without network access.
-
-== Environment Variables
-
-This project relies on the following environment variables to customize its behavior. The default values are provided in the `.example.env` file:
-
-[source,shell]
-----
-cat .example.env
-ISO_URL="https://releases.ubuntu.com/26.04/ubuntu-26.04-desktop-amd64.iso"
-ISO_FILE="DATA/ISO/official/ubuntu-26.04-desktop-amd64.iso"
-ISO_SHA256="487f87faaf547ea30e0aba4d5b53346292571256b25333a978db1692bcee9dd2"
-YOGABOOK_RELEASE_TAG="debs-20251026"
-----
-
-To use the default values, simply run:
-
-[source,shell]
-----
-cp .example.env .env
-----
-
-You can also customize these variables in your `.env` file to use a different Ubuntu version or ISO source as needed.
-When using a custom image, set its `ISO_SHA256`; if omitted, `iso:download` attempts to obtain the checksum from `SHA256SUMS` next to `ISO_URL`.
-After a successful checksum pass, `iso:download` caches the verified file metadata so subsequent runs can skip hashing an unchanged multi-gigabyte ISO. Set `ISO_FORCE_VERIFY=1` to force a fresh full checksum verification.
-
-WARNING: The unattended storage configuration erases the selected installation disk. Review `nocloud/user-data` before booting the remastered image.
-
-WARNING: The example identity uses the public password `yoga`. `task iso:patch` refuses to build with that password until you replace its hash. For a disposable test image only, you can explicitly bypass the check with `ALLOW_INSECURE_DEFAULT_PASSWORD=1 task iso:patch`.
-
-== Quickstart
-
-. Initial setup: Install the required packages
-+
 [source,shell]
 ----
 task setup
 ----
 
-. Download the official Ubuntu ISO
-+
-[source,shell]
-----
-task iso:download
-----
-The ISO will be placed in `DATA/ISO/official/`.
+`task setup` installs the ISO, squashfs, cloud-init schema, Python schema, and QEMU utilities. Docker is intentionally not installed or configured by this project.
 
-. Extract the ISO
-+
-[source,shell]
-----
-task iso:extract
-----
-. Apply patches and autoinstall config
-+
-Edit `nocloud/user-data` and `nocloud/meta-data` as needed.
-+
-Generate a private password hash and replace `autoinstall.identity.password` before patching:
-+
-[source,shell]
-----
-task password-hash
-----
-+
-Place every local Debian package that should be installed in `DATA/DEB/`. To download the current Yoga Book kernel and driver packages from the upstream GitHub release, run:
-+
-[source,shell]
-----
-task deb:download
-----
-The release tag is pinned by `YOGABOOK_RELEASE_TAG`, and every downloaded asset is checked against the SHA256 digest published by GitHub. If multiple files provide the same Debian package name, only the highest package version is embedded.
-+
-For an offline unattended installation, download the Ubuntu 26.04 dependency closure before patching:
-+
-[source,shell]
-----
-task deb:resolve
-----
-Without this step, APT may need network access to resolve dependencies that are not already part of the installed Ubuntu system.
-+
-[source,shell]
-----
-task iso:patch
-----
-This copies the packages to `/pool/yoga-book/` in the extracted ISO and regenerates `md5sum.txt`. During autoinstall they are copied into the target filesystem and installed with APT. An unresolved dependency or failed package installation stops the unattended installation instead of leaving a partially configured system.
+For physical installation, also provide:
 
-. Remaster the ISO
-+
+* an 8 GB or larger USB drive;
+* a powered USB/OTG hub (the Yoga Book's port cannot reliably power all installation devices);
+* a verified backup of the internal eMMC.
+
+== Default credentials
+
+The installed system uses these documented default credentials:
+
+[cols="1,1",options="header"]
+|===
+| Username | Password
+| `yoga` | `yoga`
+|===
+
+WARNING: These credentials are public. Change the password immediately after the first boot with `passwd`.
+
+The matching SHA-512 password hash is committed in `nocloud/user-data`, which is the authoritative autoinstall configuration. `AUTOINSTALL_PASSWORD_HASH` is not read from `.env`, so local build settings cannot silently change the documented login.
+
+== One-command clean offline build
+
 [source,shell]
 ----
-task iso:remaster
+task build
 ----
-The new ISO will be in `DATA/ISO/remastered/`. The task replays the source image's hybrid BIOS/UEFI boot layout and then verifies the boot entries, autoinstall data, and embedded packages.
 
-== Customizations
+The task performs, in order:
 
-The default user is `yoga:yoga` as defined in `nocloud/user-data`.
-Feel free to change it as you prefer.
-To generate a new password hash run `task password-hash` and paste it in place of `identity.password` in `nocloud/user-data` before remastering the ISO.
+. clean generated package, extraction, render, and remaster directories;
+. download and SHA256-check the Ubuntu 26.04 ISO;
+. download and check all six pinned `debs-20251026` assets;
+. select five distinct package names (`yogabook-support` `1.5.ubuntu1` supersedes `1.5`);
+. resolve the Ubuntu 26.04 dependency closure from a clean directory;
+. install that closure in a Docker container with `--network none`;
+. extract the official ISO and render the tracked autoinstall data;
+. validate user-data with cloud-init and the exact Subiquity schema embedded in that ISO;
+. embed the packages and their complete identity/SHA256 manifest;
+. remaster and verify hybrid BIOS/UEFI/GPT metadata, exact files, full-desktop selection, package hashes, and absence of stale NoCloud/package files;
+. write `DATA/ISO/remastered/ubuntu-26.04-desktop-amd64-autoinstall.iso.sha256`.
+
+The six immutable upstream names and hashes are tracked in `manifests/yogabook-release-debs.sha256`. The five selected identities are tracked separately in `manifests/yogabook-selected-packages.tsv`.
+
+The rendered installer explicitly selects `ubuntu-desktop`, disables installer refresh, GeoIP, driver search and driver installation, supplies no DHCP interfaces, and uses APT's documented `offline-install` fallback. It sets `Europe/Rome` and powers off when installation completes.
+
+Individual stages remain available as `task iso:download`, `task deb:download`, `task deb:resolve`, `task iso:extract`, `task iso:patch`, and `task iso:remaster`.
+
+== NIC-less VM acceptance test
+
+The VM image is deliberately named `*-test-autoinstall.iso`, targets `/dev/vda`, and bypasses the physical DMI/eMMC/Secure Boot guard. Never write it to installation media.
+
+[source,shell]
+----
+task build-vm-test
+task vm-test
+----
+
+`task vm-test` creates a disposable 64 GiB qcow2 disk, starts QEMU with `-nic none`, waits for the unattended installer to power off, removes the ISO from the second boot, and waits for an installed-system check to report:
+
+[source,text]
+----
+YOGABOOK_VM_TEST_PASS kernel=6.17.4-yogabook1
+----
+
+That marker is emitted only after checking the running kernel, `dpkg --audit`, offline `apt-get check`, the five selected packages, and the GRUB top-level setting. Logs and the disposable disk remain under ignored `DATA/VM/` for inspection.
+
+For the same unattended acceptance test with a visible GTK console, run:
+
+[source,shell]
+----
+task vm-test-gui
+----
+
+The installer window closes at the automatic poweroff, then a second window opens while the installed system is verified. Do not close either window or interact with the automated installation. The graphical test uses its own `DATA/VM/yogabook-test-gui.qcow2` disk and `yogabook-test-gui-*-serial.log` files, so it does not overwrite headless-test artifacts. It still uses `-nic none`; graphics do not weaken the offline test.
+
+== Physical installation procedure
+
+. Verify the ISO sidecar with `(cd DATA/ISO/remastered && sha256sum --check ubuntu-26.04-desktop-amd64-autoinstall.iso.sha256)`.
+. Back up the complete eMMC and prove the backup can be read.
+. Disable Secure Boot in the Yoga Book UEFI settings.
+. Write the production ISO to the USB drive using a raw-image tool. Triple-check the USB device path before writing; this repository intentionally does not automate destructive USB writes.
+. Connect external power and the USB drive through a powered OTG hub.
+. Boot the Yoga Book from USB and leave it unattended. A safety mismatch aborts before partitioning. A successful install powers the machine off.
+. Remove the USB drive, then boot from the internal eMMC.
+
+Do not call an image recovery-ready until this exact physical test has passed.
+
+== Mandatory YB1-X91L acceptance record
+
+After the first internal boot, preserve `/var/log/installer/`. The installed system also contains the exact rendered user-data and package manifest under `/var/log/installer/autoinstall-media/`.
+
+Record the date, ISO SHA256, device identity, tester, and results in a copy of `docs/hardware-test-result.adoc`. The pass requires:
+
+[source,shell]
+----
+test "$(uname -r)" = 6.17.4-yogabook1
+sudo dpkg --audit
+sudo apt-get --no-download check
+dpkg-query -W alsa-ucm-conf-yogabook \
+  linux-headers-6.17.4-yogabook1 \
+  linux-image-6.17.4-yogabook1 \
+  touch-keyboard yogabook-support
+----
+
+Also verify the touch keyboard, pen-mode switching, sound, rotation sensors, Wi-Fi, Bluetooth, suspend/resume, and reboot. Cameras and LTE should be recorded as upstream limitations rather than failures.
+
+Until a completed hardware record and installer logs are archived, the output is a *candidate image*, not a recovery-ready image.

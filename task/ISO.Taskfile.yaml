@@ -67,9 +67,9 @@ tasks:
   rm-extract:
     desc: "Remove extracted ISO directories except .gitkeep"
     cmds:
-      - sudo find DATA/ISO/extracted -mindepth 1 ! -name '.gitkeep' -exec rm -rf {} +
+      - find DATA/ISO/extracted -mindepth 1 ! -name '.gitkeep' -exec rm -rf {} +
   patch:
-    desc: "Add autoinstall data, GRUB configuration, and DATA/DEB packages to the extracted ISO."
+    desc: "Render and validate autoinstall data, then patch it and the offline packages into the ISO tree."
     cmds:
       - task: validate-autoinstall
       - task: cp-nocloud
@@ -77,20 +77,51 @@ tasks:
       - task: :deb:embed
       - task: checksums
   validate-autoinstall:
-    desc: "Validate safety-sensitive unattended installation settings."
+    desc: "Render user-data and validate it with cloud-init and the exact 26.04 ISO Subiquity schema."
     cmds:
+      - task: render-autoinstall
       - |
-        DEFAULT_PASSWORD_HASH='$6$fywbi1lu3Ea97e9V$4hq1EHmuvkk3/lX9TUyuvnr4eleA76apESfZZioPUn2X0FMOCa5guFWvw7i6QS9vOwdFPwgE9hfWfHi7V1HjV.'
-        if grep -Fq "$DEFAULT_PASSWORD_HASH" nocloud/user-data && [ "${ALLOW_INSECURE_DEFAULT_PASSWORD:-0}" != "1" ]; then
-          echo "Error: nocloud/user-data still uses the public default password." >&2
-          echo "Generate a replacement with 'task password-hash', or explicitly set ALLOW_INSECURE_DEFAULT_PASSWORD=1 for a disposable test image." >&2
+        RENDERED_USER_DATA=DATA/autoinstall/nocloud/user-data
+        command -v cloud-init >/dev/null 2>&1 || {
+          echo "Error: cloud-init is required for autoinstall validation; run task setup." >&2
           exit 1
-        fi
-        if command -v cloud-init >/dev/null 2>&1; then
-          cloud-init schema --config-file nocloud/user-data
-        else
-          echo "Warning: cloud-init is unavailable; skipping schema validation." >&2
-        fi
+        }
+        cloud-init schema --config-file "$RENDERED_USER_DATA"
+
+        ISO_BASENAME="$(basename "$ISO_FILE")"
+        ISO_NAME="${ISO_BASENAME%.iso}"
+        EXTRACT_DIR="DATA/ISO/extracted/$ISO_NAME"
+        LIVE_LAYER="$EXTRACT_DIR/casper/minimal.standard.live.squashfs"
+        [ -f "$LIVE_LAYER" ] || {
+          echo "Error: Ubuntu desktop installer layer $LIVE_LAYER is missing." >&2
+          exit 1
+        }
+        grep -Eq '^[[:space:]]*id:[[:space:]]+ubuntu-desktop[[:space:]]*$' \
+          "$EXTRACT_DIR/casper/install-sources.yaml" || {
+          echo "Error: the exact ISO does not offer the requested ubuntu-desktop source." >&2
+          exit 1
+        }
+        VALIDATION_DIR="$(mktemp -d)"
+        trap 'rm -rf "$VALIDATION_DIR"' EXIT
+        SNAP_PATH="$(unsquashfs -ll "$LIVE_LAYER" 2>/dev/null \
+          | awk '$NF ~ /var\/lib\/snapd\/snaps\/ubuntu-desktop-bootstrap_[0-9]+\.snap$/ { sub(/^squashfs-root\//, "", $NF); print $NF; exit }')"
+        [ -n "$SNAP_PATH" ] || {
+          echo "Error: could not locate the Subiquity-bearing bootstrap snap in $LIVE_LAYER." >&2
+          exit 1
+        }
+        unsquashfs -no-progress -no-xattrs -d "$VALIDATION_DIR/outer" "$LIVE_LAYER" "$SNAP_PATH" >/dev/null
+        SNAP_FILE="$VALIDATION_DIR/outer/$SNAP_PATH"
+        unsquashfs -no-progress -no-xattrs -d "$VALIDATION_DIR/inner" "$SNAP_FILE" \
+          bin/subiquity/autoinstall-schema.json >/dev/null
+        scripts/validate-subiquity.py \
+          "$VALIDATION_DIR/inner/bin/subiquity/autoinstall-schema.json" \
+          "$RENDERED_USER_DATA"
+        echo "Validated rendered user-data with cloud-init and the exact Subiquity schema from $ISO_BASENAME"
+
+  render-autoinstall:
+    desc: "Render tracked NoCloud data for the production or VM-test disk target."
+    cmds:
+      - scripts/render-autoinstall.sh DATA/autoinstall/nocloud
   checksums:
     desc: "Regenerate md5sum.txt after changing extracted ISO contents."
     cmds:
@@ -114,7 +145,7 @@ tasks:
         rm -f "$CHECKSUM_FILE"
         echo "Regenerated $EXTRACT_DIR/md5sum.txt"
   cp-nocloud:
-    desc: "Copy the nocloud directory to the extracted ISO directory using the $ISO_FILE environment variable."
+    desc: "Copy freshly rendered NoCloud data into the extracted ISO."
     cmds:
       - |
         if [ -z "$ISO_FILE" ]; then
@@ -124,7 +155,7 @@ tasks:
         ISO_BASENAME="$(basename "$ISO_FILE")"
         ISO_NAME="${ISO_BASENAME%.iso}"
         EXTRACT_DIR="DATA/ISO/extracted/$ISO_NAME"
-        NO_CLOUD_DIR="nocloud"
+        NO_CLOUD_DIR="DATA/autoinstall/nocloud"
         if [ ! -d "$EXTRACT_DIR" ]; then
           echo "Error: Extracted ISO directory $EXTRACT_DIR does not exist. Run the extract task first." >&2
           exit 1
@@ -133,6 +164,7 @@ tasks:
           echo "Error: $NO_CLOUD_DIR directory not found in workspace root." >&2
           exit 1
         fi
+        rm -rf "$EXTRACT_DIR/nocloud"
         mkdir -p "$EXTRACT_DIR/nocloud"
         cp -a "$NO_CLOUD_DIR/." "$EXTRACT_DIR/nocloud/"
         echo "Copied $NO_CLOUD_DIR to $EXTRACT_DIR/"
@@ -161,7 +193,7 @@ tasks:
         echo "Patched grub files copied to $EXTRACT_DIR/boot/grub/"
 
   remaster:
-    desc: "Create a remastered ISO from the extracted and patched directory using xorriso."
+    desc: "Create, checksum, and verify a remastered hybrid ISO."
     cmds:
       - |
         if [ -z "$ISO_FILE" ]; then
@@ -172,7 +204,11 @@ tasks:
         ISO_NAME="${ISO_BASENAME%.iso}"
         EXTRACT_DIR="DATA/ISO/extracted/$ISO_NAME"
         OUTPUT_DIR="DATA/ISO/remastered"
-        OUTPUT_ISO="$OUTPUT_DIR/${ISO_NAME}-autoinstall.iso"
+        if [ "${AUTOINSTALL_TEST_MODE:-0}" = 1 ]; then
+          OUTPUT_ISO="$OUTPUT_DIR/${ISO_NAME}-test-autoinstall.iso"
+        else
+          OUTPUT_ISO="$OUTPUT_DIR/${ISO_NAME}-autoinstall.iso"
+        fi
         # Shorten volume ID to max 32 chars
         VOLID="${ISO_NAME}-autoinstall"
         VOLID="${VOLID:0:32}"
@@ -199,16 +235,25 @@ tasks:
           -boot_image any replay \
           -commit
         mv "$PARTIAL_ISO" "$OUTPUT_ISO"
+        (
+          cd "$OUTPUT_DIR"
+          sha256sum "$(basename "$OUTPUT_ISO")" > "$(basename "$OUTPUT_ISO").sha256.part"
+          mv "$(basename "$OUTPUT_ISO").sha256.part" "$(basename "$OUTPUT_ISO").sha256"
+        )
         echo "Remastered ISO created at $OUTPUT_ISO"
       - task: verify
   verify:
-    desc: "Verify that the remastered ISO contains autoinstall data, packages, and BIOS/UEFI boot entries."
+    desc: "Verify hybrid boot metadata, exact rendered data, full desktop selection, packages, and output checksum."
     cmds:
       - |
         ISO_BASENAME="$(basename "$ISO_FILE")"
         ISO_NAME="${ISO_BASENAME%.iso}"
         EXTRACT_DIR="DATA/ISO/extracted/$ISO_NAME"
-        OUTPUT_ISO="DATA/ISO/remastered/${ISO_NAME}-autoinstall.iso"
+        if [ "${AUTOINSTALL_TEST_MODE:-0}" = 1 ]; then
+          OUTPUT_ISO="DATA/ISO/remastered/${ISO_NAME}-test-autoinstall.iso"
+        else
+          OUTPUT_ISO="DATA/ISO/remastered/${ISO_NAME}-autoinstall.iso"
+        fi
         if [ ! -f "$OUTPUT_ISO" ]; then
           echo "Error: Remastered ISO $OUTPUT_ISO does not exist." >&2
           exit 1
@@ -219,14 +264,25 @@ tasks:
         echo "$REPORT" | grep -q 'System area summary:.*GPT'
         VERIFY_DIR="$(mktemp -d)"
         trap 'rm -rf "$VERIFY_DIR"' EXIT
+        mkdir -p "$VERIFY_DIR/iso"
         xorriso -osirrox on -indev "$OUTPUT_ISO" \
-          -extract /nocloud/user-data "$VERIFY_DIR/user-data" \
+          -extract /nocloud "$VERIFY_DIR/iso/nocloud" \
+          -extract /pool/yoga-book "$VERIFY_DIR/iso/yoga-book" \
           -extract /md5sum.txt "$VERIFY_DIR/md5sum.txt" >/dev/null 2>&1
-        cmp nocloud/user-data "$VERIFY_DIR/user-data"
+        diff -ru DATA/autoinstall/nocloud "$VERIFY_DIR/iso/nocloud"
+        diff -rq "$EXTRACT_DIR/pool/yoga-book" "$VERIFY_DIR/iso/yoga-book"
         cmp "$EXTRACT_DIR/md5sum.txt" "$VERIFY_DIR/md5sum.txt"
+        grep -Fq 'id: ubuntu-desktop' "$VERIFY_DIR/iso/nocloud/user-data"
+        grep -Fq 'search_drivers: false' "$VERIFY_DIR/iso/nocloud/user-data"
+        grep -Fq 'fallback: offline-install' "$VERIFY_DIR/iso/nocloud/user-data"
+        grep -Fq 'geoip: false' "$VERIFY_DIR/iso/nocloud/user-data"
+        grep -Fq 'shutdown: poweroff' "$VERIFY_DIR/iso/nocloud/user-data"
+        grep -Fq 'GRUB_TOP_LEVEL=/boot/vmlinuz-6.17.4-yogabook1' "$VERIFY_DIR/iso/nocloud/user-data"
         grep -Fq '  ./boot/grub/grub.cfg' "$VERIFY_DIR/md5sum.txt"
         grep -Fq '  ./boot/grub/loopback.cfg' "$VERIFY_DIR/md5sum.txt"
-        PACKAGE_COUNT="$(xorriso -indev "$OUTPUT_ISO" -find /pool/yoga-book -type f -name '*.deb' -exec lsdl 2>&1 | grep -c "'/pool/yoga-book/")"
+        grep -Fq '  ./pool/yoga-book/Packages' "$VERIFY_DIR/md5sum.txt"
+        grep -Fq '  ./pool/yoga-book/packages.manifest' "$VERIFY_DIR/md5sum.txt"
+        PACKAGE_COUNT="$(find "$VERIFY_DIR/iso/yoga-book" -maxdepth 1 -type f -name '*.deb' | wc -l)"
         EXPECTED_PACKAGE_COUNT="$(find "$EXTRACT_DIR/pool/yoga-book" -maxdepth 1 -type f -name '*.deb' | wc -l)"
         if [ "$PACKAGE_COUNT" -eq 0 ] || [ "$PACKAGE_COUNT" -ne "$EXPECTED_PACKAGE_COUNT" ]; then
           echo "Error: Expected $EXPECTED_PACKAGE_COUNT packages in $OUTPUT_ISO, found $PACKAGE_COUNT." >&2
@@ -236,7 +292,22 @@ tasks:
           PACKAGE_NAME="$(basename "$PACKAGE_PATH")"
           grep -Fq "  ./pool/yoga-book/$PACKAGE_NAME" "$VERIFY_DIR/md5sum.txt"
         done
-        echo "Verified BIOS/UEFI boot entries, exact autoinstall/checksum data, and $PACKAGE_COUNT package(s) in $OUTPUT_ISO"
+        scripts/package-manifest.sh "$VERIFY_DIR/iso/yoga-book" > "$VERIFY_DIR/generated-packages.manifest"
+        cmp "$VERIFY_DIR/iso/yoga-book/packages.manifest" "$VERIFY_DIR/generated-packages.manifest"
+        cmp DATA/DEB/packages.manifest "$VERIFY_DIR/iso/yoga-book/packages.manifest"
+        (
+          cd "$(dirname "$OUTPUT_ISO")"
+          sha256sum --check "$(basename "$OUTPUT_ISO").sha256"
+        )
+        echo "Verified BIOS/UEFI/GPT boot metadata, full-desktop offline autoinstall data, $PACKAGE_COUNT package(s), and the ISO SHA256"
+
+  clean:
+    desc: "Remove generated extraction, remaster, rendered configuration, and package work directories."
+    cmds:
+      - task: rm-extract
+      - task: rm-remaster
+      - task: :deb:clean
+      - rm -rf DATA/autoinstall
   rm-remaster:
     desc: "Remove remastered ISO files except .gitkeep"
     cmds:

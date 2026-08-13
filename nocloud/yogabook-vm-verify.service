@@ -1,0 +1,10 @@
+[Unit]
+Description=Verify the NIC-less Yoga Book test installation
+After=multi-user.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/yogabook-vm-verify
+
+[Install]
+WantedBy=multi-user.target
