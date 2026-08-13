@@ -15,6 +15,8 @@ This project has been tested on the following Operating Systems:
 * Ubuntu 24.04 LTS
 * Ubuntu 25.10
 
+Ubuntu 26.04 LTS is the current default build target. Its download and remaster structure are validated by the tasks, but a complete installation on the Yoga Book should still be tested before relying on the image for recovery.
+
 == Requirements
 
 The automation and workflow in this project are primarily managed using the https://taskfile.dev[Task] command-line tool and a few `Taskfile.yaml` files. You can install Task by following the official documentation available at https://taskfile.dev/docs/installation.
@@ -35,6 +37,8 @@ Other tools required for manipulating the ISO image and its contents are describ
 | rsync | Fast file copying and synchronization tool
 |===
 
+`task deb:resolve` additionally requires Docker when you want to bundle the Ubuntu dependency closure for an installation without network access.
+
 == Environment Variables
 
 This project relies on the following environment variables to customize its behavior. The default values are provided in the `.example.env` file:
@@ -42,8 +46,10 @@ This project relies on the following environment variables to customize its beha
 [source,shell]
 ----
 cat .example.env
-ISO_URL="https://releases.ubuntu.com/24.04.3/ubuntu-24.04.3-desktop-amd64.iso"
-ISO_FILE="DATA/ISO/official/ubuntu-24.04.3-desktop-amd64.iso
+ISO_URL="https://releases.ubuntu.com/26.04/ubuntu-26.04-desktop-amd64.iso"
+ISO_FILE="DATA/ISO/official/ubuntu-26.04-desktop-amd64.iso"
+ISO_SHA256="487f87faaf547ea30e0aba4d5b53346292571256b25333a978db1692bcee9dd2"
+YOGABOOK_RELEASE_TAG="debs-20251026"
 ----
 
 To use the default values, simply run:
@@ -54,6 +60,11 @@ cp .example.env .env
 ----
 
 You can also customize these variables in your `.env` file to use a different Ubuntu version or ISO source as needed.
+When using a custom image, set its `ISO_SHA256`; if omitted, `iso:download` attempts to obtain the checksum from `SHA256SUMS` next to `ISO_URL`.
+
+WARNING: The unattended storage configuration erases the selected installation disk. Review `nocloud/user-data` before booting the remastered image.
+
+WARNING: The example identity uses the public password `yoga`. `task iso:patch` refuses to build with that password until you replace its hash. For a disposable test image only, you can explicitly bypass the check with `ALLOW_INSECURE_DEFAULT_PASSWORD=1 task iso:patch`.
 
 == Quickstart
 
@@ -82,19 +93,44 @@ task iso:extract
 +
 Edit `nocloud/user-data` and `nocloud/meta-data` as needed.
 +
+Generate a private password hash and replace `autoinstall.identity.password` before patching:
++
+[source,shell]
+----
+task password-hash
+----
++
+Place every local Debian package that should be installed in `DATA/DEB/`. To download the current Yoga Book kernel and driver packages from the upstream GitHub release, run:
++
+[source,shell]
+----
+task deb:download
+----
+The release tag is pinned by `YOGABOOK_RELEASE_TAG`, and every downloaded asset is checked against the SHA256 digest published by GitHub. If multiple files provide the same Debian package name, only the highest package version is embedded.
++
+For an offline unattended installation, download the Ubuntu 26.04 dependency closure before patching:
++
+[source,shell]
+----
+task deb:resolve
+----
+Without this step, APT may need network access to resolve dependencies that are not already part of the installed Ubuntu system.
++
 [source,shell]
 ----
 task iso:patch
 ----
+This copies the packages to `/pool/yoga-book/` in the extracted ISO and regenerates `md5sum.txt`. During autoinstall they are copied into the target filesystem and installed with APT. An unresolved dependency or failed package installation stops the unattended installation instead of leaving a partially configured system.
+
 . Remaster the ISO
 +
 [source,shell]
 ----
-task task iso:remaster
+task iso:remaster
 ----
-The new ISO will be in `DATA/ISO/remastered/`.
+The new ISO will be in `DATA/ISO/remastered/`. The task replays the source image's hybrid BIOS/UEFI boot layout and then verifies the boot entries, autoinstall data, and embedded packages.
 
-== Cutomizations
+== Customizations
 
 The default user is `yoga:yoga` as defined in `nocloud/user-data`.
 Feel free to change it as you prefer.

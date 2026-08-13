@@ -1,23 +1,91 @@
 version: "3"
 
-env:
-  GITHUB_RELEASE: "https://api.github.com/repos/jekhor/yogabook-linux/releases/latest"
-
 tasks:
   download:
-    desc: "Download the Yoga Book Kernel & Drivers."
+    desc: "Download and verify Yoga Book packages from a pinned GitHub release."
     dir: DATA/DEB
     cmds:
       - |
-        curl -s "$GITHUB_RELEASE" \
-        | jq -r '.assets[] | select(.name | endswith(".deb")) | .browser_download_url' \
-        | xargs -n1 wget
+        RELEASE_TAG="${YOGABOOK_RELEASE_TAG:-debs-20251026}"
+        RELEASE_API="https://api.github.com/repos/jekhor/yogabook-linux/releases/tags/$RELEASE_TAG"
+        MANIFEST="$(mktemp)"
+        trap 'rm -f "$MANIFEST"' EXIT
+        curl --fail --silent --show-error --location "$RELEASE_API" \
+          | jq -r '.assets[] | select(.name | endswith(".deb")) | [.name, .browser_download_url, .digest] | @tsv' \
+          > "$MANIFEST"
+        if [ ! -s "$MANIFEST" ]; then
+          echo "Error: Release $RELEASE_TAG has no Debian package assets." >&2
+          rm -f "$MANIFEST"
+          exit 1
+        fi
+        while IFS="$(printf '\t')" read -r NAME URL DIGEST; do
+          EXPECTED_SHA256="${DIGEST#sha256:}"
+          if [ -z "$EXPECTED_SHA256" ] || [ "$EXPECTED_SHA256" = "$DIGEST" ]; then
+            echo "Error: GitHub did not publish a SHA256 digest for $NAME." >&2
+            rm -f "$MANIFEST"
+            exit 1
+          fi
+          if [ -f "$NAME" ] && echo "$EXPECTED_SHA256  $NAME" | sha256sum --check --status; then
+            echo "Already downloaded and verified: $NAME"
+            continue
+          fi
+          curl --fail --show-error --location --continue-at - --output "$NAME.part" "$URL"
+          echo "$EXPECTED_SHA256  $NAME.part" | sha256sum --check
+          mv "$NAME.part" "$NAME"
+        done < "$MANIFEST"
+        rm -f "$MANIFEST"
+  resolve:
+    desc: "Download Ubuntu 26.04 dependencies into DATA/DEB for offline installation (requires Docker)."
+    cmds:
+      - |
+        if ! command -v docker >/dev/null 2>&1; then
+          echo "Error: Docker is required by deb:resolve." >&2
+          exit 1
+        fi
+        INPUT_DIR="$(mktemp -d)"
+        trap 'rm -rf "$INPUT_DIR"' EXIT
+        stage_newest_packages() {
+          rm -f "$INPUT_DIR"/*.deb
+          for DEB_FILE in DATA/DEB/*.deb; do
+            PACKAGE="$(dpkg-deb -f "$DEB_FILE" Package)"
+            VERSION="$(dpkg-deb -f "$DEB_FILE" Version)"
+            NEWEST=1
+            for CANDIDATE in DATA/DEB/*.deb; do
+              [ "$CANDIDATE" = "$DEB_FILE" ] && continue
+              [ "$(dpkg-deb -f "$CANDIDATE" Package)" = "$PACKAGE" ] || continue
+              CANDIDATE_VERSION="$(dpkg-deb -f "$CANDIDATE" Version)"
+              if dpkg --compare-versions "$CANDIDATE_VERSION" gt "$VERSION"; then
+                NEWEST=0
+                break
+              fi
+            done
+            if [ "$NEWEST" -eq 1 ]; then
+              cp "$DEB_FILE" "$INPUT_DIR/"
+            fi
+          done
+        }
+        stage_newest_packages
+        docker run --rm --platform linux/amd64 \
+          -v "$INPUT_DIR:/input:ro" \
+          -v "$PWD/DATA/DEB:/packages" \
+          ubuntu:26.04 \
+          sh -ceu '
+            apt-get update
+            apt-get install --yes --download-only /input/*.deb
+            find /var/cache/apt/archives -maxdepth 1 -type f -name "*.deb" -exec cp -v {} /packages/ \;
+          '
+        stage_newest_packages
+        docker run --rm --platform linux/amd64 --network none \
+          -v "$INPUT_DIR:/input:ro" \
+          ubuntu:26.04 \
+          sh -ceu 'apt-get install --yes /input/*.deb'
+        echo "Downloaded and offline-verified the target-release dependency closure in DATA/DEB"
   embed:
-    desc: "Embed the Yoga Book Kernel & Drivers into the extracted ISO using the $ISO_FILE environment variable."
+    desc: "Embed the newest version of each package from DATA/DEB into the extracted ISO."
     cmds:
       - |
         if [ -z "$ISO_FILE" ]; then
-          echo "Error: Please set ISO_FILE in your environment or .env file, e.g. ISO_FILE=DATA/ISO/official/ubuntu-24.04.3-desktop-amd64.iso" >&2
+          echo "Error: Please set ISO_FILE in your environment or .env file, e.g. ISO_FILE=DATA/ISO/official/ubuntu-26.04-desktop-amd64.iso" >&2
           exit 1
         fi
         ISO_BASENAME="$(basename "$ISO_FILE")"
@@ -28,11 +96,37 @@ tasks:
           echo "Error: Extracted ISO directory $EXTRACT_DIR does not exist. Run the iso:extract task first." >&2
           exit 1
         fi
-        DEB_FILES="$(find DATA/DEB -maxdepth 1 -type f -name '*.deb')"
+        DEB_FILES="$(find DATA/DEB -maxdepth 1 -type f -name '*.deb' -print)"
         if [ -z "$DEB_FILES" ]; then
           echo "Error: No .deb files found in DATA/DEB. Download or place the packages first." >&2
           exit 1
         fi
-        sudo mkdir -p "$DEST_DIR"
-        sudo cp -v DATA/DEB/*.deb "$DEST_DIR/"
-        echo "Embedded .deb files into $DEST_DIR"
+        if ! command -v dpkg-deb >/dev/null 2>&1; then
+          echo "Error: dpkg-deb is required to inspect packages before embedding them." >&2
+          exit 1
+        fi
+        mkdir -p "$DEST_DIR"
+        find "$DEST_DIR" -maxdepth 1 -type f -name '*.deb' -delete
+        EMBEDDED=0
+        for DEB_FILE in DATA/DEB/*.deb; do
+          PACKAGE="$(dpkg-deb -f "$DEB_FILE" Package)"
+          VERSION="$(dpkg-deb -f "$DEB_FILE" Version)"
+          NEWEST=1
+          for CANDIDATE in DATA/DEB/*.deb; do
+            [ "$CANDIDATE" = "$DEB_FILE" ] && continue
+            CANDIDATE_PACKAGE="$(dpkg-deb -f "$CANDIDATE" Package)"
+            [ "$CANDIDATE_PACKAGE" = "$PACKAGE" ] || continue
+            CANDIDATE_VERSION="$(dpkg-deb -f "$CANDIDATE" Version)"
+            if dpkg --compare-versions "$CANDIDATE_VERSION" gt "$VERSION"; then
+              NEWEST=0
+              break
+            fi
+          done
+          if [ "$NEWEST" -eq 1 ]; then
+            cp -v "$DEB_FILE" "$DEST_DIR/"
+            EMBEDDED=$((EMBEDDED + 1))
+          else
+            echo "Skipping superseded package: $PACKAGE $VERSION"
+          fi
+        done
+        echo "Embedded $EMBEDDED package(s) into $DEST_DIR"

@@ -13,6 +13,8 @@ autoinstall:
     layout:
       name: direct
   late-commands:
-    - curtin in-target -- dpkg -i /cdrom/pool/yoga-book/*.deb || true
-    - curtin in-target -- apt-get -f install -y
-    - curtin in-target -- update-grub
+    - install -d /target/tmp/yoga-book-debs
+    - cp -a /cdrom/pool/yoga-book/. /target/tmp/yoga-book-debs/
+    - curtin in-target --target=/target -- sh -c 'DEBIAN_FRONTEND=noninteractive apt-get install --yes /tmp/yoga-book-debs/*.deb'
+    - curtin in-target --target=/target -- update-grub
+    - rm -rf /target/tmp/yoga-book-debs
