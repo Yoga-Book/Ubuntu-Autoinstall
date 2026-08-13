@@ -1,40 +1,134 @@
 = YB1-X91L Hardware Acceptance Result
+:toc: left
 
-Copy this file to a dated result file; do not overwrite the template.
+This is the required physical-test template. Copy it to a dated file before recording results; do not overwrite the template.
+
+[source,shell]
+----
+cp docs/hardware-test-result.adoc docs/hardware-test-result-YYYY-MM-DD.adoc
+----
+
+Every `YES` result needs a reproducible command, log path, photograph, or concise observation in the evidence column. Leave the overall status as *NOT RECOVERY-READY* if any required check is missing or fails.
+
+== Build and device identity
 
 [cols="1,3",options="header"]
 |===
-| Field | Result
-| Date/time (Europe/Rome) | NOT TESTED
+| Field | Result/evidence
+| Test date/time (`Europe/Rome`) | NOT TESTED
 | Tester | NOT TESTED
-| DMI product | NOT TESTED
-| eMMC model | NOT TESTED
-| Backup verified | NOT TESTED
-| Secure Boot disabled | NOT TESTED
+| Git commit | NOT TESTED
 | ISO filename | NOT TESTED
 | ISO SHA256 | NOT TESTED
+| USB writing tool and target | NOT TESTED
+| Powered OTG hub used | NOT TESTED
+| eMMC backup location | NOT TESTED
+| Backup readability verified | NOT TESTED
+| DMI product name | NOT TESTED
+| eMMC device and model | NOT TESTED
+| eMMC removable flag | NOT TESTED
+| Secure Boot state | NOT TESTED
 | Installer log archive | NOT TESTED
 |===
+
+Capture the machine-readable baseline:
+
+[source,shell]
+----
+cat /sys/class/dmi/id/product_name
+tr -d '[:space:]' </sys/class/block/mmcblk0/device/name; echo
+cat /sys/class/block/mmcblk0/removable
+sudo mokutil --sb-state
+uname -a
+----
+
+Expected values are `Lenovo YB1-X91L`, `CWBD3R`, removable flag `0`, explicit `SecureBoot disabled`, and installed kernel `6.17.4-yogabook1`.
+
+== Automated installation and integrity
 
 [cols="2,1,3",options="header"]
 |===
 | Check | Pass | Evidence/notes
+| Production ISO sidecar verified before writing | NO | NOT TESTED
+| Full eMMC backup completed and readable | NO | NOT TESTED
+| Safety guard accepted the exact target device | NO | NOT TESTED
 | Automatic installer poweroff | NO | NOT TESTED
+| USB removed before internal boot | NO | NOT TESTED
 | Internal eMMC boot | NO | NOT TESTED
 | `uname -r` is `6.17.4-yogabook1` | NO | NOT TESTED
-| `dpkg --audit` is clean | NO | NOT TESTED
+| Generic Ubuntu 7.0 kernel remains as fallback | NO | NOT TESTED
+| `GRUB_TOP_LEVEL` selects Yoga Book kernel | NO | NOT TESTED
+| `dpkg --audit` is empty | NO | NOT TESTED
 | Offline `apt-get check` passes | NO | NOT TESTED
-| Five Yoga Book packages installed | NO | NOT TESTED
-| Touch keyboard | NO | NOT TESTED
-| Pen-mode switching | NO | NOT TESTED
-| Sound | NO | NOT TESTED
-| Rotation sensors | NO | NOT TESTED
-| Wi-Fi | NO | NOT TESTED
-| Bluetooth | NO | NOT TESTED
-| Suspend/resume | NO | NOT TESTED
-| Reboot | NO | NOT TESTED
-| Cameras (upstream unsupported) | N/A | Known limitation
-| X91L LTE modem (upstream unsupported) | N/A | Known limitation
+| Five selected Yoga Book packages installed | NO | NOT TESTED
+| Embedded package manifest archived | NO | NOT TESTED
+| Installer logs archived | NO | NOT TESTED
+| Default password changed | NO | NOT TESTED
 |===
 
+Record these command results:
+
+[source,shell]
+----
+test "$(uname -r)" = 6.17.4-yogabook1
+test -f /boot/vmlinuz-6.17.4-yogabook1
+test -f /boot/initrd.img-6.17.4-yogabook1
+find /boot -maxdepth 1 -name 'vmlinuz-7.0.0-*-generic' -print
+cat /etc/default/grub.d/60-yogabook.cfg
+sudo dpkg --audit
+sudo apt-get --no-download check
+dpkg-query -W \
+  alsa-ucm-conf-yogabook \
+  linux-headers-6.17.4-yogabook1 \
+  linux-image-6.17.4-yogabook1 \
+  touch-keyboard \
+  yogabook-support
+sha256sum /var/log/installer/autoinstall-media/packages.manifest \
+  /var/log/installer/autoinstall-media/user-data
+----
+
+== Hardware behavior
+
+[cols="2,1,3",options="header"]
+|===
+| Check | Pass | Evidence/notes
+| Touch keyboard input | NO | NOT TESTED
+| Touch keyboard backlight/visibility | NO | NOT TESTED
+| Pen-mode switching | NO | NOT TESTED
+| Pen input | NO | NOT TESTED
+| Speaker sound | NO | NOT TESTED
+| Headphone output, if available | NO | NOT TESTED
+| Rotation sensors and automatic rotation | NO | NOT TESTED
+| Wi-Fi association and traffic | NO | NOT TESTED
+| Bluetooth discovery and connection | NO | NOT TESTED
+| Suspend and resume | NO | NOT TESTED
+| Reboot returns to Yoga Book kernel | NO | NOT TESTED
+| Poweroff completes | NO | NOT TESTED
+| Cameras | N/A | Unsupported upstream
+| X91L LTE modem | N/A | Unsupported upstream
+|===
+
+For each manual check, state what was exercised and the result. A device merely appearing in a list is not sufficient evidence that the function works.
+
+== Preserved artifacts
+
+[cols="2,3",options="header"]
+|===
+| Artifact | Archive location and digest
+| Production ISO and sidecar | NOT TESTED
+| Complete `/var/log/installer/` | NOT TESTED
+| `/var/log/installer/autoinstall-media/user-data` | NOT TESTED
+| `/var/log/installer/autoinstall-media/packages.manifest` | NOT TESTED
+| Hardware command transcript | NOT TESTED
+| Photos or videos for manual hardware checks | NOT TESTED
+|===
+
+== Final decision
+
+Required failures or deviations: NOT TESTED
+
+Known upstream limitations observed: cameras and X91L LTE modem
+
 Overall status: *NOT TESTED — NOT RECOVERY-READY*
+
+Reviewer/sign-off: NOT TESTED

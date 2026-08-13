@@ -1,0 +1,205 @@
+= Troubleshooting
+:toc: left
+:toclevels: 2
+
+Run commands from the repository root unless a section says otherwise.
+
+== Build-host checks
+
+[source,shell]
+----
+task --version
+docker version
+qemu-system-x86_64 --version
+task --list-all
+task test-render-autoinstall
+----
+
+If Task is missing, install it from https://taskfile.dev. If Docker is unavailable or permission is denied, configure the host's Docker installation; `task setup` intentionally does not do that.
+
+== Source ISO problems
+
+=== Checksum mismatch
+
+`iso:download` never accepts a mismatched ISO. Check that `ISO_URL`, `ISO_FILE`, and `ISO_SHA256` refer to the same basename and release. Remove or correct the bad local file, then run:
+
+[source,shell]
+----
+ISO_FORCE_VERIFY=1 task iso:download
+----
+
+If `ISO_SHA256` is unset, the task expects a usable `SHA256SUMS` file beside `ISO_URL`. Set the digest explicitly for mirrors that do not provide it.
+
+=== Extraction directory is not empty
+
+Use the purpose-built cleanup task, then retry:
+
+[source,shell]
+----
+task iso:rm-extract
+task iso:extract
+----
+
+`task build` already begins with the broader `iso:clean` workflow.
+
+== Package problems
+
+=== Docker is required by deb:resolve
+
+Confirm that the Docker daemon is running and the current user can invoke `docker run`. The dependency resolver needs network access in its first container and deliberately disables networking in its installation-proof container.
+
+=== Pinned asset checksum fails
+
+Do not update the manifest to match an unexplained file. Confirm the upstream release asset and independently establish the intended digest. Partial downloads use a `.part` suffix and are not promoted until their checksum passes.
+
+=== Offline closure verification fails
+
+Start from clean generated package state:
+
+[source,shell]
+----
+task deb:clean
+task deb:download
+task deb:resolve
+task deb:verify
+----
+
+If Ubuntu repository contents changed, inspect `DATA/DEB/packages.manifest` before accepting the new closure. A passing network-disabled installation proof is mandatory.
+
+== Autoinstall validation problems
+
+=== cloud-init or Subiquity schema failure
+
+The source of truth is `nocloud/user-data`; rendered data is under `DATA/autoinstall/nocloud/`. Run:
+
+[source,shell]
+----
+task test-render-autoinstall
+task iso:validate-autoinstall
+----
+
+The second command requires an extracted source ISO because it validates against the exact Subiquity schema embedded there. Host cloud-init permission warnings can appear during schema validation; the authoritative result is the command's exit status and `Valid schema` output.
+
+=== Wrong target disk in rendered data
+
+Production must contain `/dev/mmcblk0`; VM mode must contain `/dev/vda` and no `/dev/mmcblk0`. Rebuild through the supported top-level task rather than exporting test variables manually:
+
+[source,shell]
+----
+task build-vm-test
+----
+
+Never use its `*-test-autoinstall.iso` on hardware.
+
+== USB writing problems
+
+=== Production ISO is missing
+
+`task iso:burn:usb` deliberately reuses the existing verified production artifact. Run the combined workflow when no artifact exists or its source files changed:
+
+[source,shell]
+----
+task iso:build:burn:usb
+----
+
+=== No eligible USB disk is listed
+
+`task iso:burn:usb` lists only writable whole disks reported with USB transport that are large enough for the image. Normal desktop mounts below `/run/media/$USER/` or `/media/$USER/` remain selectable and are unmounted automatically after confirmation. Inspect the kernel view with:
+
+[source,shell]
+----
+lsblk -o NAME,PATH,TYPE,TRAN,SIZE,RO,RM,VENDOR,MODEL,SERIAL,MOUNTPOINTS
+----
+
+The writer excludes mounts outside those desktop media directories so it cannot automatically detach a system, application, or deliberately managed mount. Unmount such a filesystem yourself only after establishing why it is mounted. USB SSDs are eligible even when `RM` is `0`, provided `TRAN` is `usb`.
+
+=== A desktop-mounted USB cannot be unmounted
+
+Close terminals and applications using files on the USB, then rerun the task. It reports the mount point and fails before writing if `sudo umount` cannot detach it. Do not force-unmount a busy filesystem.
+
+=== Selected device changed before writing
+
+The writer records the selected path, major/minor number, capacity, transport, vendor, model, and serial, then checks them again after `sudo` authorization and after automatic unmounting. If the device disappears, remains mounted, or its identity changes, reconnect the intended USB disk and restart the task. Do not work around this check.
+
+=== Write, flush, or read-back verification failed
+
+Treat the USB as incomplete and do not boot it. A failed write can leave a partial image; a checksum mismatch means the ISO-length bytes read from the device differ from the verified production ISO. Check the device and host logs, replace suspect media, and rerun the complete task. There is intentionally no option to skip read-back verification.
+
+The command needs an interactive terminal and prompts for `sudo` only after the exact `ERASE /dev/<device>` confirmation. It will not run from a redirected or unattended session.
+
+== VM test problems
+
+=== No graphical window
+
+`task vm-test` is intentionally headless. Use `task vm-test-gui` for GTK output. The test remains unattended; do not close or interact with its windows.
+
+=== Quiet terminal during installation
+
+Follow the relevant serial log:
+
+[source,shell]
+----
+tail -f DATA/VM/install-serial.log
+tail -f DATA/VM/yogabook-test-gui-install-serial.log
+----
+
+Installation has a 90-minute timeout. TCG fallback is substantially slower than KVM.
+
+=== KVM is not selected
+
+The script requires `/dev/kvm` to be readable and writable. Check:
+
+[source,shell]
+----
+ls -l /dev/kvm
+id
+----
+
+After changing group membership, start a new login session. TCG is a supported fallback, not a correctness failure.
+
+=== Installer powered off but the task later failed
+
+Inspect the installed-system log and marker:
+
+[source,shell]
+----
+tail -n 100 DATA/VM/boot-serial.log
+grep -F 'YOGABOOK_VM_TEST_PASS kernel=6.17.4-yogabook1' DATA/VM/boot-serial.log
+----
+
+For GUI mode, use `DATA/VM/yogabook-test-gui-boot-serial.log`. The marker proves the post-install checks ran; an installer poweroff alone is insufficient.
+
+=== Test ISO is missing
+
+Run `task build-vm-test`. A later production `task build` removes generated test images during its clean phase.
+
+== Physical installer aborts
+
+An `AUTOINSTALL SAFETY ABORT` is a protective failure before storage configuration. Do not bypass it. Confirm:
+
+* the device is exactly YB1-X91L;
+* the internal disk is `/dev/mmcblk0`, non-removable, and model `CWBD3R`;
+* Secure Boot is explicitly disabled;
+* the production ISO—not the VM-test ISO—was written to USB.
+
+If `mokutil` is unavailable or cannot determine state, the guard intentionally fails closed.
+
+== Installed system boots the wrong kernel
+
+Collect:
+
+[source,shell]
+----
+uname -r
+cat /etc/default/grub.d/60-yogabook.cfg
+ls -l /boot/vmlinuz-* /boot/initrd.img-*
+grep -F '6.17.4-yogabook1' /boot/grub/grub.cfg
+----
+
+The expected top-level setting is `GRUB_TOP_LEVEL=/boot/vmlinuz-6.17.4-yogabook1`. Keep the generic 7.0 kernel as fallback; do not remove it while diagnosing.
+
+== Collecting evidence
+
+For build failures, retain the complete Task output and generated manifests. For VM failures, retain the qcow2 disk and both serial logs. For hardware failures, preserve `/var/log/installer/`, `/var/log/yogabook-vm-verify.log` when applicable, the exact ISO SHA256, and a dated copy of `hardware-test-result.adoc`.
+
+Do not describe an image as recovery-ready while a required check is missing or failed.

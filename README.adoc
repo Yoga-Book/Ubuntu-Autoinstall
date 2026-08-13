@@ -1,43 +1,53 @@
 = Ubuntu 26.04 Offline Autoinstall for Lenovo Yoga Book YB1-X91L
-:source-highlighter: rouge
+:toc: left
+:toclevels: 3
 
-== Scope and safety
+Build a verified hybrid Ubuntu 26.04 Desktop autoinstall ISO for the Lenovo Yoga Book YB1-X91L. The image contains the Yoga Book kernel, hardware-support packages, and their Ubuntu dependency closure, so the target machine does not need a network connection during installation.
 
-This project builds a hybrid BIOS/UEFI Ubuntu 26.04 Desktop autoinstall ISO for the *Lenovo Yoga Book YB1-X91L*. It bundles the upstream Yoga Book kernel and support packages plus their Ubuntu dependency closure, so installation does not require a NIC.
+This repository produces a *candidate image*. It is not recovery-ready until the mandatory physical-device procedure and acceptance record have passed on a YB1-X91L.
 
-WARNING: The production image unconditionally erases the complete `/dev/mmcblk0` eMMC after its safety checks pass. Back up every required file before booting it. There is no in-place upgrade or preservation mode.
+== Read this before building
 
-The production installer aborts before storage is configured unless all of these conditions are true:
+WARNING: The production image erases the complete `/dev/mmcblk0` eMMC after its safety checks pass. It has no preservation, dual-boot, or in-place-upgrade mode. Back up all required data and prove that the backup is readable before booting the installer.
 
-* DMI product name is exactly `Lenovo YB1-X91L`.
-* `/dev/mmcblk0` exists and is non-removable.
-* The eMMC reports model `CWBD3R`.
-* UEFI Secure Boot is disabled.
+The production installer refuses to configure storage unless all of these checks pass:
 
-Secure Boot must remain disabled because `6.17.4-yogabook1` is unsigned. Ubuntu's generic 7.0 kernel remains installed as a GRUB fallback, while `GRUB_TOP_LEVEL` selects the Yoga Book kernel by default.
+* the DMI product name is exactly `Lenovo YB1-X91L`;
+* `/dev/mmcblk0` exists and is a non-removable block device;
+* the eMMC model is exactly `CWBD3R`;
+* `mokutil` explicitly reports that Secure Boot is disabled.
 
-The cameras and X91L LTE modem are not supported by the upstream Yoga Book work and are not acceptance criteria.
+Secure Boot must remain disabled because `6.17.4-yogabook1` is unsigned. The installer selects that kernel through `GRUB_TOP_LEVEL`; Ubuntu's generic 7.0 kernel remains installed as a fallback.
 
-== Requirements
+The cameras and the X91L LTE modem are unsupported by the upstream Yoga Book work and are not acceptance criteria. See <<known-limitations>>.
 
-Use an Ubuntu build host with Docker and https://taskfile.dev[Task]. Install the remaining tools with:
+== What the project installs
 
-[source,shell]
-----
-task setup
-----
+The autoinstall selects the full `ubuntu-desktop` source and configures:
 
-`task setup` installs the ISO, squashfs, cloud-init schema, Python schema, and QEMU utilities. Docker is intentionally not installed or configured by this project.
+* locale `en_US.UTF-8`, Italian keyboard layout, and timezone `Europe/Rome`;
+* no installer refresh, GeoIP lookup, online driver search, or driver installation;
+* no configured Ethernet interfaces and APT's `offline-install` fallback;
+* a direct whole-disk layout on `/dev/mmcblk0` in production;
+* the five selected Yoga Book packages plus their offline Ubuntu dependency closure;
+* `6.17.4-yogabook1` as GRUB's top-level kernel;
+* an automatic poweroff after installation.
 
-For physical installation, also provide:
+The five selected release package identities are:
 
-* an 8 GB or larger USB drive;
-* a powered USB/OTG hub (the Yoga Book's port cannot reliably power all installation devices);
-* a verified backup of the internal eMMC.
+[cols="2,2,1",options="header"]
+|===
+| Package | Version | Architecture
+| `alsa-ucm-conf-yogabook` | `1.4` | `all`
+| `linux-headers-6.17.4-yogabook1` | `6.17.4-00016-g704990e9da51-15` | `amd64`
+| `linux-image-6.17.4-yogabook1` | `6.17.4-00016-g704990e9da51-15` | `amd64`
+| `touch-keyboard` | `1.4.3` | `amd64`
+| `yogabook-support` | `1.5.ubuntu1` | `all`
+|===
+
+All six files from the https://github.com/jekhor/yogabook-linux/releases/tag/debs-20251026[upstream `debs-20251026` release] are downloaded and checksum-verified. Both `yogabook-support` files are retained as verified source assets, but only the newer Ubuntu-compatible `1.5.ubuntu1` identity is selected for installation.
 
 == Default credentials
-
-The installed system uses these documented default credentials:
 
 [cols="1,1",options="header"]
 |===
@@ -45,85 +55,218 @@ The installed system uses these documented default credentials:
 | `yoga` | `yoga`
 |===
 
-WARNING: These credentials are public. Change the password immediately after the first boot with `passwd`.
+WARNING: These credentials are public. Change the password immediately after the first physical boot with `passwd`.
 
-The matching SHA-512 password hash is committed in `nocloud/user-data`, which is the authoritative autoinstall configuration. `AUTOINSTALL_PASSWORD_HASH` is not read from `.env`, so local build settings cannot silently change the documented login.
+The matching SHA-512 crypt hash is committed in `nocloud/user-data`, the authoritative autoinstall configuration. Environment variables do not replace it. To customize the initial password, see <<customize-the-installed-identity>>.
 
-== One-command clean offline build
+== Build-host requirements
+
+Use an Ubuntu amd64 host with:
+
+* https://taskfile.dev[Task] 3.x;
+* Docker with permission to run `ubuntu:26.04` containers;
+* Internet access while downloading the source ISO, release packages, container image, and dependency closure;
+* at least 30 GiB of free space for one clean build, plus additional space for Docker layers, VM disks, and logs.
+
+Installation is offline; the build is not. `deb:resolve` intentionally uses the Ubuntu repositories while assembling the closure, then proves that the selected packages install in a second container started with `--network none`.
+
+Install host utilities with:
 
 [source,shell]
 ----
+task setup
+----
+
+This installs download, ISO, GRUB, squashfs, cloud-init, JSON-schema, password, and QEMU utilities. It does not install Task or Docker; use the https://docs.docker.com/engine/install/ubuntu/[official Docker Engine instructions] when Docker is not already configured.
+
+For physical installation, also provide:
+
+* an 8 GB or larger USB drive;
+* a powered USB/OTG hub;
+* external power for the Yoga Book;
+* a verified backup of the internal eMMC.
+
+== Configuration
+
+No `.env` file is required for the default Ubuntu 26.04 build. Task loads `.env` when it exists; start from `.example.env` only when overriding the source image:
+
+[source,shell]
+----
+cp .example.env .env
+----
+
+[cols="2,3,2",options="header"]
+|===
+| Variable | Meaning | Default
+| `ISO_URL` | Source Ubuntu Desktop ISO URL. The basename determines the downloaded filename. | Ubuntu 26.04 Desktop amd64 release URL
+| `ISO_FILE` | Local source ISO consumed by extract, remaster, verify, and VM tasks. Keep it consistent with `ISO_URL`. | `DATA/ISO/official/ubuntu-26.04-desktop-amd64.iso`
+| `ISO_SHA256` | Expected source-ISO digest. If unset, `iso:download` reads `SHA256SUMS` beside `ISO_URL`. | unset in Task; pinned in `.example.env`
+| `ISO_FORCE_VERIFY` | Set to `1` to bypass the verified-file metadata cache and hash the source ISO again. | `0`
+|===
+
+`AUTOINSTALL_TEST_MODE`, `AUTOINSTALL_TARGET_DISK`, `VM_TEST_DISPLAY`, and `VM_TEST_NAME` are internal test controls set by the supplied tasks. Do not put them in `.env` for production builds.
+
+== Quick start: production candidate
+
+[source,shell]
+----
+task setup
 task build
 ----
 
-The task performs, in order:
+`task build` runs a clean pipeline:
 
-. clean generated package, extraction, render, and remaster directories;
-. download and SHA256-check the Ubuntu 26.04 ISO;
-. download and check all six pinned `debs-20251026` assets;
-. select five distinct package names (`yogabook-support` `1.5.ubuntu1` supersedes `1.5`);
-. resolve the Ubuntu 26.04 dependency closure from a clean directory;
-. install that closure in a Docker container with `--network none`;
-. extract the official ISO and render the tracked autoinstall data;
-. validate user-data with cloud-init and the exact Subiquity schema embedded in that ISO;
-. embed the packages and their complete identity/SHA256 manifest;
-. remaster and verify hybrid BIOS/UEFI/GPT metadata, exact files, full-desktop selection, package hashes, and absence of stale NoCloud/package files;
-. write `DATA/ISO/remastered/ubuntu-26.04-desktop-amd64-autoinstall.iso.sha256`.
+. remove generated extraction, remaster, render, and package work files;
+. download and SHA256-check the Ubuntu ISO;
+. download and verify all six pinned Yoga Book release assets;
+. select five package identities and resolve a clean dependency closure;
+. install the closure in a network-disabled Ubuntu 26.04 container;
+. extract the source ISO;
+. render and validate production NoCloud data;
+. patch GRUB, NoCloud data, packages, indexes, and checksums;
+. remaster using the source image's hybrid boot layout and the `Ubuntu-26.04-Yoga-Book` volume label;
+. verify the volume label, BIOS, UEFI, GPT, embedded content, manifests, and output SHA256.
 
-The six immutable upstream names and hashes are tracked in `manifests/yogabook-release-debs.sha256`. The five selected identities are tracked separately in `manifests/yogabook-selected-packages.tsv`.
+Default-build output:
 
-The rendered installer explicitly selects `ubuntu-desktop`, disables installer refresh, GeoIP, driver search and driver installation, supplies no DHCP interfaces, and uses APT's documented `offline-install` fallback. It sets `Europe/Rome` and powers off when installation completes.
+[source,text]
+----
+DATA/ISO/remastered/ubuntu-26.04-desktop-amd64-autoinstall.iso
+DATA/ISO/remastered/ubuntu-26.04-desktop-amd64-autoinstall.iso.sha256
+----
 
-Individual stages remain available as `task iso:download`, `task deb:download`, `task deb:resolve`, `task iso:extract`, `task iso:patch`, and `task iso:remaster`.
+The ISO filesystem volume label is `Ubuntu-26.04-Yoga-Book`; desktop environments use this as the USB display name after the image is written.
 
-== NIC-less VM acceptance test
+Verify the sidecar before copying the image:
 
-The VM image is deliberately named `*-test-autoinstall.iso`, targets `/dev/vda`, and bypasses the physical DMI/eMMC/Secure Boot guard. Never write it to installation media.
+[source,shell]
+----
+cd DATA/ISO/remastered
+sha256sum --check ubuntu-26.04-desktop-amd64-autoinstall.iso.sha256
+----
+
+To write the existing verified production image to a USB disk without rebuilding it, run:
+
+[source,shell]
+----
+task iso:burn:usb
+----
+
+This revalidates the ISO checksum and embedded production guard before offering any device. If source files changed, or the production ISO does not exist, clean-build and burn in one command instead:
+
+[source,shell]
+----
+task iso:build:burn:usb
+----
+
+The burn workflow lists whole, writable USB-transport disks large enough for the ISO. Desktop-auto-mounted filesystems under `/run/media/$USER/` or `/media/$USER/` remain selectable and are shown before confirmation. After the exact phrase `ERASE /dev/<device>`, the task rechecks the device identity, automatically unmounts those desktop filesystems, proves that no mount remains, writes the hybrid image with `dd`, flushes it, and SHA256-verifies the ISO-length bytes read back from the USB. Mounts outside the desktop media directories remain excluded; there is no non-interactive or skip-verification mode.
+
+NOTE: `task build` starts by deleting generated remastered images. Running it after `task build-vm-test` removes the test ISO; running `task build-vm-test` after it removes the production ISO. Copy any artifact you need to retain outside `DATA/ISO/remastered/`.
+
+== VM acceptance tests
+
+=== Build the test-only image
 
 [source,shell]
 ----
 task build-vm-test
+----
+
+This runs the same clean build but renders `/dev/vda`, writes `guard-mode=test`, and names the result:
+
+[source,text]
+----
+DATA/ISO/remastered/ubuntu-26.04-desktop-amd64-test-autoinstall.iso
+DATA/ISO/remastered/ubuntu-26.04-desktop-amd64-test-autoinstall.iso.sha256
+----
+
+WARNING: Never write a `*-test-autoinstall.iso` to physical installation media. Test mode deliberately bypasses the DMI, eMMC-model, and Secure Boot checks so QEMU can exercise the installer.
+
+=== Headless test
+
+[source,shell]
+----
 task vm-test
 ----
 
-`task vm-test` creates a disposable 64 GiB qcow2 disk, starts QEMU with `-nic none`, waits for the unattended installer to power off, removes the ISO from the second boot, and waits for an installed-system check to report:
+The task:
+
+* replaces the previous headless test disk and logs;
+* creates a sparse 64 GiB qcow2 disk;
+* uses KVM when `/dev/kvm` is available and writable, otherwise TCG;
+* gives QEMU 4 GiB RAM and two virtual CPUs;
+* installs with `-nic none` and a 90-minute timeout;
+* boots the installed disk without the ISO and uses a 15-minute timeout;
+* powers off only after the installed-system verifier succeeds.
+
+Follow the serial logs from another terminal:
+
+[source,shell]
+----
+tail -f DATA/VM/install-serial.log
+tail -f DATA/VM/boot-serial.log
+----
+
+The required marker is:
 
 [source,text]
 ----
 YOGABOOK_VM_TEST_PASS kernel=6.17.4-yogabook1
 ----
 
-That marker is emitted only after checking the running kernel, `dpkg --audit`, offline `apt-get check`, the five selected packages, and the GRUB top-level setting. Logs and the disposable disk remain under ignored `DATA/VM/` for inspection.
+It is emitted only after checking the running Yoga Book kernel, `dpkg --audit`, offline `apt-get check`, all five selected packages, and `GRUB_TOP_LEVEL`. QEMU's default firmware exercises the BIOS boot path; `iso:verify` separately verifies that the ISO also retains a UEFI boot entry and GPT metadata.
 
-For the same unattended acceptance test with a visible GTK console, run:
+=== Graphical test
 
 [source,shell]
 ----
 task vm-test-gui
 ----
 
-The installer window closes at the automatic poweroff, then a second window opens while the installed system is verified. Do not close either window or interact with the automated installation. The graphical test uses its own `DATA/VM/yogabook-test-gui.qcow2` disk and `yogabook-test-gui-*-serial.log` files, so it does not overwrite headless-test artifacts. It still uses `-nic none`; graphics do not weaken the offline test.
+This performs the same unattended NIC-less acceptance test with GTK output. Do not interact with or close the QEMU window. The installation window closes at poweroff and a second window opens for installed-system verification.
 
-== Physical installation procedure
+Graphical artifacts are isolated from the headless run:
 
-. Verify the ISO sidecar with `(cd DATA/ISO/remastered && sha256sum --check ubuntu-26.04-desktop-amd64-autoinstall.iso.sha256)`.
-. Back up the complete eMMC and prove the backup can be read.
-. Disable Secure Boot in the Yoga Book UEFI settings.
-. Write the production ISO to the USB drive using a raw-image tool. Triple-check the USB device path before writing; this repository intentionally does not automate destructive USB writes.
-. Connect external power and the USB drive through a powered OTG hub.
-. Boot the Yoga Book from USB and leave it unattended. A safety mismatch aborts before partitioning. A successful install powers the machine off.
-. Remove the USB drive, then boot from the internal eMMC.
+[source,text]
+----
+DATA/VM/yogabook-test-gui.qcow2
+DATA/VM/yogabook-test-gui-install-serial.log
+DATA/VM/yogabook-test-gui-boot-serial.log
+----
 
-Do not call an image recovery-ready until this exact physical test has passed.
+Do not run headless and graphical tests concurrently unless the host has enough CPU, RAM, and storage bandwidth.
 
-== Mandatory YB1-X91L acceptance record
+== Physical installation
 
-After the first internal boot, preserve `/var/log/installer/`. The installed system also contains the exact rendered user-data and package manifest under `/var/log/installer/autoinstall-media/`.
+. Insert the USB drive in the build host. Normal desktop automounting is supported.
+. Run `task iso:burn:usb` to reuse the existing verified production ISO, or `task iso:build:burn:usb` when its sources changed. The workflow verifies the ISO and its production guard, automatically unmounts the selected USB's desktop-mounted filesystems after confirmation, and writes and read-back-verifies the disk. Do not use the VM-test ISO.
+. Back up the entire eMMC and prove that the backup is readable.
+. Disable Secure Boot in the Yoga Book firmware settings.
+. Connect the USB drive and external power through a powered OTG hub.
+. Boot the Yoga Book from USB and select `Ubuntu Autoinstall` if the default entry does not start automatically.
+. Leave the installation unattended. A hardware mismatch aborts before storage configuration; success powers the machine off.
+. Remove the USB drive and boot from internal eMMC.
+. Log in as `yoga` / `yoga`, immediately run `passwd`, and complete the acceptance procedure below.
 
-Record the date, ISO SHA256, device identity, tester, and results in a copy of `docs/hardware-test-result.adoc`. The pass requires:
+The GRUB image also retains `Try or Install Ubuntu` and `Ubuntu (safe graphics)` entries for diagnostics. Those entries are not the automated recovery workflow.
+
+== Mandatory YB1-X91L acceptance
+
+Preserve `/var/log/installer/` after the first internal boot. The installed system also stores the rendered user-data and embedded package manifest in `/var/log/installer/autoinstall-media/`.
+
+Copy link:docs/hardware-test-result.adoc[`docs/hardware-test-result.adoc`] to a dated result file, for example:
 
 [source,shell]
 ----
+cp docs/hardware-test-result.adoc docs/hardware-test-result-2026-08-13.adoc
+----
+
+Record the device identity, ISO digest, backup evidence, installer logs, and these command results:
+
+[source,shell]
+----
+test "$(cat /sys/class/dmi/id/product_name)" = "Lenovo YB1-X91L"
+test "$(tr -d '[:space:]' </sys/class/block/mmcblk0/device/name)" = CWBD3R
 test "$(uname -r)" = 6.17.4-yogabook1
 sudo dpkg --audit
 sudo apt-get --no-download check
@@ -133,6 +276,126 @@ dpkg-query -W alsa-ucm-conf-yogabook \
   touch-keyboard yogabook-support
 ----
 
-Also verify the touch keyboard, pen-mode switching, sound, rotation sensors, Wi-Fi, Bluetooth, suspend/resume, and reboot. Cameras and LTE should be recorded as upstream limitations rather than failures.
+Manually verify touch keyboard, pen-mode switching, sound, rotation sensors, Wi-Fi, Bluetooth, suspend/resume, and reboot. The result remains *NOT RECOVERY-READY* until every required field has evidence and the overall status is updated.
 
-Until a completed hardware record and installer logs are archived, the output is a *candidate image*, not a recovery-ready image.
+== Task reference
+
+Run `task --list-all` for the live command list.
+
+[cols="2,4",options="header"]
+|===
+| Task | Purpose
+| `task build` | Clean production build, remaster, and verification.
+| `task build-vm-test` | Clean test-only build targeting `/dev/vda`.
+| `task vm-test` | Headless NIC-less install and installed-system acceptance test.
+| `task vm-test-gui` | Equivalent acceptance test with GTK windows.
+| `task test-render-autoinstall` | Verify tracked `yoga` credentials and production/test disk rendering.
+| `task setup` | Install Ubuntu host packages; excludes Task and Docker.
+| `task iso:download` | Download or reuse and checksum the source ISO.
+| `task iso:burn:usb` | Reuse the existing production ISO, select a USB disk, safely unmount its desktop-mounted filesystems, write it, and verify it by reading it back.
+| `task iso:build:burn:usb` | Clean-build and verify the production ISO, then run the guarded USB writer.
+| `task iso:burn:usb:test` | Run the non-destructive USB discovery, safety, confirmation, and verification tests.
+| `task iso:extract` | Extract the configured `ISO_FILE`; requires an empty destination.
+| `task iso:render-autoinstall` | Render tracked NoCloud data for production or VM-test mode.
+| `task iso:validate-autoinstall` | Render and validate against host cloud-init and the exact source-ISO Subiquity schema.
+| `task iso:patch` | Render, schema-check, and embed NoCloud, GRUB, and offline packages.
+| `task iso:cp-nocloud` | Replace the extracted ISO's NoCloud tree with the current rendering.
+| `task iso:cp-grub` | Replace extracted GRUB menus with the tracked autoinstall-first menus.
+| `task iso:checksums` | Regenerate the extracted ISO's `md5sum.txt` after patching.
+| `task iso:remaster` | Create the hybrid output, sidecar, and run `iso:verify`.
+| `task iso:verify` | Verify boot metadata, exact embedded data, manifests, and sidecar.
+| `task iso:clean` | Remove generated extraction, remaster, render, and package work files; retain the downloaded official ISO.
+| `task iso:rm-extract` | Remove extracted ISO trees while retaining `.gitkeep`.
+| `task iso:rm-remaster` | Remove remastered ISO files and sidecars while retaining `.gitkeep`.
+| `task deb:download` | Download and verify all six pinned upstream release files.
+| `task deb:resolve` | Select five identities, resolve dependencies, and prove offline installation.
+| `task deb:verify` | Recheck source assets, package identities, manifest, and APT index.
+| `task deb:embed` | Copy the verified closure and indexes into the extracted ISO.
+| `task deb:clean` | Remove generated upstream/package files and the generated package manifest.
+| `task password-hash` / `task ph` | Generate a SHA-512 crypt hash for manual `user-data` customization.
+| `task password-check` / `task pc` | Check a password against a crypt hash.
+|===
+
+The low-level `iso:cp-*`, `iso:checksums`, and `iso:rm-*` tasks are pipeline building blocks. Prefer `task build` unless debugging a specific stage.
+
+[[customize-the-installed-identity]]
+== Customize the installed identity
+
+Edit the tracked `identity` mapping in `nocloud/user-data`. To generate and verify a new password hash:
+
+[source,shell]
+----
+task password-hash
+task password-check HASH='$6$salt$hash'
+----
+
+Paste the complete hash into `identity.password`, keeping it quoted. Then run:
+
+[source,shell]
+----
+task test-render-autoinstall
+task build-vm-test
+task vm-test
+----
+
+If the username or hostname changes, also review `nocloud/meta-data` and every acceptance instruction that refers to `yoga`. Configuration is intentionally tracked; `.env` does not inject credentials.
+
+For package, kernel, release, or storage changes, read link:docs/architecture.adoc[`docs/architecture.adoc`] before editing. These values are coupled to manifests, late commands, verification scripts, and acceptance criteria.
+
+== Generated files and cleanup
+
+[cols="3,3",options="header"]
+|===
+| Path | Contents
+| `DATA/ISO/official/` | Downloaded source ISO and verified-file metadata cache.
+| `DATA/ISO/extracted/` | Writable source-ISO extraction used during patching.
+| `DATA/ISO/remastered/` | Production or VM-test ISO and SHA256 sidecar.
+| `DATA/DEB/upstream/` | Six pinned upstream release files.
+| `DATA/DEB/packages/` | Selected packages, Ubuntu dependency closure, and APT `Packages` index.
+| `DATA/DEB/packages.manifest` | Generated package identity, filename, and SHA256 manifest.
+| `DATA/autoinstall/nocloud/` | Rendered NoCloud tree embedded in the ISO.
+| `DATA/VM/` | Disposable qcow2 disks and serial logs.
+|===
+
+Everything under `DATA/` is ignored except directory placeholders. `task iso:clean` does not remove the downloaded official ISO or VM disks. VM tasks replace only their own disk and log set.
+
+== Troubleshooting
+
+See link:docs/troubleshooting.adoc[`docs/troubleshooting.adoc`] for symptom-based help. Start with these checks:
+
+[source,shell]
+----
+task --list-all
+task test-render-autoinstall
+# After deb:resolve:
+task deb:verify
+# After a production build:
+task iso:verify
+# After build-vm-test instead:
+AUTOINSTALL_TEST_MODE=1 task iso:verify
+----
+
+When a VM test is running, inspect the serial log rather than assuming a quiet terminal means it has stalled. Never start a second test against the same headless artifact set.
+
+== Project internals
+
+link:docs/architecture.adoc[`docs/architecture.adoc`] describes the trust boundaries, source tree, build stages, manifests, safety invariants, and update procedure. The short version is:
+
+* tracked manifests define immutable upstream inputs and selected package identities;
+* `nocloud/user-data` defines the production install;
+* test rendering changes only the target disk and guard mode;
+* build-time verification proves the exact ISO contents;
+* VM testing proves unattended offline installation and first boot;
+* only physical testing can prove Yoga Book hardware behavior.
+
+[[known-limitations]]
+== Known limitations
+
+* Cameras are unsupported upstream.
+* The X91L LTE modem is unsupported upstream.
+* The Yoga Book kernel is unsigned, so Secure Boot must be disabled.
+* VM acceptance cannot validate touch, pen mode, sound, sensors, radio hardware, suspend/resume, or the physical eMMC guard.
+* The standard VM workflow exercises BIOS boot; UEFI presence is checked structurally by `iso:verify`.
+* Ubuntu repository contents can change after a build. The generated package manifest and ISO checksum identify exactly what a particular build contained.
+
+Do not describe an image as recovery-ready without a completed hardware record and preserved installer logs.

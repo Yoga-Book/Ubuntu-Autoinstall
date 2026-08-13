@@ -4,6 +4,21 @@ tasks:
   default:
     cmds:
       - echo "ISO Taskfile"
+  burn:usb:
+    desc: "Safely write the existing verified production ISO to an interactively selected USB disk."
+    cmds:
+      - AUTOINSTALL_TEST_MODE=0 scripts/burn-usb.sh
+  build:burn:usb:
+    desc: "Clean-build, verify, and safely write the production ISO to an interactively selected USB disk."
+    cmds:
+      # A child Task process forces production mode through every nested build
+      # task, even if test mode is present in the caller's environment.
+      - AUTOINSTALL_TEST_MODE=0 task build
+      - task: burn:usb
+  burn:usb:test:
+    desc: "Run the non-destructive USB writer safety tests."
+    cmds:
+      - scripts/test-burn-usb.sh
   download:
     desc: "Download the official ISO to DATA/ISO/official (Ubuntu 26.04 by default)."
     cmds:
@@ -209,9 +224,7 @@ tasks:
         else
           OUTPUT_ISO="$OUTPUT_DIR/${ISO_NAME}-autoinstall.iso"
         fi
-        # Shorten volume ID to max 32 chars
-        VOLID="${ISO_NAME}-autoinstall"
-        VOLID="${VOLID:0:32}"
+        VOLID="Ubuntu-26.04-Yoga-Book"
         if [ ! -d "$EXTRACT_DIR" ]; then
           echo "Error: Extracted ISO directory $EXTRACT_DIR does not exist. Run the extract and patch tasks first." >&2
           exit 1
@@ -262,6 +275,8 @@ tasks:
         echo "$REPORT" | grep -q 'El Torito boot img.*BIOS'
         echo "$REPORT" | grep -q 'El Torito boot img.*UEFI'
         echo "$REPORT" | grep -q 'System area summary:.*GPT'
+        PVD_REPORT="$(xorriso -indev "$OUTPUT_ISO" -pvd_info 2>&1)"
+        echo "$PVD_REPORT" | grep -Fq "Volume id    : 'Ubuntu-26.04-Yoga-Book'"
         VERIFY_DIR="$(mktemp -d)"
         trap 'rm -rf "$VERIFY_DIR"' EXIT
         mkdir -p "$VERIFY_DIR/iso"
@@ -299,7 +314,7 @@ tasks:
           cd "$(dirname "$OUTPUT_ISO")"
           sha256sum --check "$(basename "$OUTPUT_ISO").sha256"
         )
-        echo "Verified BIOS/UEFI/GPT boot metadata, full-desktop offline autoinstall data, $PACKAGE_COUNT package(s), and the ISO SHA256"
+        echo "Verified Ubuntu-26.04-Yoga-Book volume label, BIOS/UEFI/GPT boot metadata, full-desktop offline autoinstall data, $PACKAGE_COUNT package(s), and the ISO SHA256"
 
   clean:
     desc: "Remove generated extraction, remaster, rendered configuration, and package work directories."

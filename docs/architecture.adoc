@@ -1,0 +1,175 @@
+= Project Architecture and Maintenance Guide
+:toc: left
+:toclevels: 3
+
+This document explains how the repository turns pinned upstream inputs into a candidate Yoga Book recovery image, which files are authoritative, and what must change together during maintenance.
+
+== Trust and verification model
+
+The pipeline separates five kinds of evidence:
+
+. *Pinned source evidence*: `manifests/yogabook-release-debs.sha256` names and hashes all six files from upstream release `debs-20251026`.
+. *Selection evidence*: `manifests/yogabook-selected-packages.tsv` declares the five package identities that must be installed.
+. *Closure evidence*: `DATA/DEB/packages.manifest` records package name, version, architecture, filename, and SHA256 for every generated dependency package.
+. *Image evidence*: the output `.sha256` sidecar and `iso:verify` prove boot metadata and exact embedded files.
+. *Runtime evidence*: VM logs prove unattended offline installation and first boot; the hardware acceptance record proves device behavior.
+
+No single layer substitutes for another. For example, a valid ISO checksum does not prove that touch or suspend works on physical hardware.
+
+== Authoritative tracked inputs
+
+[cols="3,4",options="header"]
+|===
+| Path | Responsibility
+| `Taskfile.yaml` | Public orchestration, production/test modes, VM entry points, and password helpers.
+| `task/Setup.Taskfile.yaml` | Ubuntu build-host package installation.
+| `task/Deb.Taskfile.yaml` | Source-package download, selection, dependency resolution, offline proof, manifests, and embedding.
+| `task/ISO.Taskfile.yaml` | Source ISO download, extraction, schema validation, patching, remastering, verification, and cleanup.
+| `.example.env` | Supported source-ISO configuration example.
+| `manifests/yogabook-release-debs.sha256` | Six immutable upstream filenames and digests.
+| `manifests/yogabook-selected-packages.tsv` | Five required package identities.
+| `nocloud/user-data` | Production autoinstall, identity, storage, offline package installation, kernel selection, and shutdown.
+| `nocloud/meta-data` | NoCloud instance ID and local hostname.
+| `nocloud/verify-target.sh` | Destructive-storage guard for production and restricted disk guard for tests.
+| `nocloud/vm-verify.sh` | Installed-system assertions and serial success marker for VM mode.
+| `nocloud/yogabook-vm-verify.service` | One-shot first-boot verifier enabled only in VM-test images.
+| `patch/official/boot/grub/` | Autoinstall-first GRUB menus for direct and loopback boot.
+| `scripts/render-autoinstall.sh` | Deterministic production/test NoCloud rendering.
+| `scripts/package-manifest.sh` | Canonical generated package-manifest format.
+| `scripts/burn-usb.sh` | Interactive USB discovery, destructive-write safeguards, raw image writing, and bounded read-back verification.
+| `scripts/validate-subiquity.py` | Validation against the schema extracted from the exact source ISO.
+| `scripts/vm-test.sh` | NIC-less install and installed-disk boot orchestration.
+| `docs/hardware-test-result.adoc` | Required physical acceptance evidence template.
+|===
+
+== Build flow
+
+[source,text]
+----
+Ubuntu ISO + pinned Yoga Book DEBs
+              |
+              v
+     resolve Ubuntu closure ----> network-disabled install proof
+              |
+              v
+ extract ISO -> render NoCloud -> validate cloud-init/Subiquity
+              |
+              v
+ patch GRUB + NoCloud + packages + md5sum.txt
+              |
+              v
+ replay hybrid boot layout -> output ISO + SHA256
+              |
+              v
+structural ISO verification -> guarded USB write -> VM/hardware acceptance
+----
+
+`task build` executes the production path. `task build-vm-test` starts a child Task process with test mode enabled so the `/dev/vda` target propagates through every nested task.
+
+`task iso:burn:usb` reuses the existing production artifact; `task iso:build:burn:usb` first forces production mode through a child clean build. Before either path invokes `dd`, it verifies the ISO sidecar and embedded `guard-mode=production`, allows only whole USB-transport disks, rejects read-only or undersized devices, and excludes mounts outside the current user's desktop media directories. After the exact device-specific erase phrase, it obtains `sudo`, rechecks the selected device fingerprint, automatically unmounts its `/run/media/$USER/` or `/media/$USER/` filesystems, and proves that no mount remains. It then flushes the raw write and compares the ISO digest with the digest of exactly the ISO-length prefix read back from the device. It never writes a partition path.
+
+== Production and test invariants
+
+=== Production
+
+Production rendering copies `nocloud/user-data` unchanged and writes `guard-mode=production`. The early command then requires:
+
+* whole block device `/dev/mmcblk0`;
+* DMI `Lenovo YB1-X91L`;
+* non-removable `mmcblk0`;
+* eMMC model `CWBD3R`;
+* an explicit `SecureBoot disabled` result from `mokutil`.
+
+The guard fails closed when it cannot determine any required value.
+
+=== VM test
+
+Test rendering accepts only whole `/dev/vdX` or `/dev/sdX` disks, replaces every `/dev/mmcblk0` occurrence with the selected test disk, and writes `guard-mode=test`. Test guard mode does not inspect physical DMI, eMMC, or Secure Boot state.
+
+VM-only late commands add serial consoles, install the verifier, enable its systemd service, and power off after the success marker. These additions must never appear in a production rendering.
+
+== Offline package design
+
+`deb:download` always starts from an empty upstream directory and verifies exactly six release files. `deb:resolve` then:
+
+. selects exactly one file for each identity in `yogabook-selected-packages.tsv`;
+. runs an online Ubuntu 26.04 container to download dependencies;
+. generates a tab-separated manifest and an APT `Packages` index;
+. runs a second Ubuntu 26.04 container with `--network none`;
+. installs all five selected packages from the file repository;
+. requires clean `dpkg --audit` and `apt-get --no-download check` results.
+
+The target installer recreates that trusted file repository under `/opt/yoga-book-debs`, installs the named packages, verifies the kernel and initramfs, verifies that a generic 7.0 kernel remains, regenerates GRUB, and removes the temporary repository.
+
+The repository is marked `[trusted=yes]` because it is an unsigned local APT repository. Integrity comes from the tracked upstream hashes, generated package manifest, regenerated ISO `md5sum.txt`, and final ISO SHA256—not from an APT repository signature.
+
+== Schema and image verification
+
+`iso:validate-autoinstall` performs two independent checks:
+
+* the host `cloud-init schema` validator checks the complete cloud-config document;
+* the exact Subiquity autoinstall schema is extracted from the `ubuntu-desktop-bootstrap` snap inside the source ISO and validates the `autoinstall` mapping.
+
+`iso:verify` then requires:
+
+* the exact `Ubuntu-26.04-Yoga-Book` ISO volume label;
+* El Torito BIOS and UEFI entries;
+* GPT system-area metadata;
+* exact equality between rendered and embedded NoCloud trees;
+* exact equality between staged and embedded package trees;
+* expected full-desktop/offline settings and Yoga Book GRUB selection;
+* checksum entries for GRUB, package index, manifest, and every DEB;
+* a regenerated package manifest identical to the embedded and build manifests;
+* a valid output SHA256 sidecar.
+
+== Updating coupled values
+
+=== Ubuntu source ISO
+
+Changing Ubuntu releases is not only an `.env` edit. Update and verify:
+
+* `.example.env`, `Taskfile.yaml`, and source-ISO digest behavior;
+* the Docker image tags in `task/Deb.Taskfile.yaml`;
+* expected generic-kernel checks in `nocloud/user-data`;
+* source selection and exact embedded Subiquity schema;
+* all README version statements and acceptance criteria;
+* clean production and VM builds plus both boot modes if claimed.
+
+=== Yoga Book release packages or kernel
+
+Update together:
+
+* all six filenames and digests in `yogabook-release-debs.sha256`;
+* all five identities in `yogabook-selected-packages.tsv`;
+* named packages and kernel/initramfs checks in `nocloud/user-data`;
+* `GRUB_TOP_LEVEL` and generic fallback checks;
+* `nocloud/vm-verify.sh` and its success marker;
+* README package tables and hardware acceptance commands.
+
+Then run the complete clean build and VM acceptance test. Never infer compatibility from package installation alone.
+
+=== Device or storage target
+
+The YB1-X91L, `CWBD3R`, and `/dev/mmcblk0` values form one destructive-safety contract across `user-data`, `verify-target.sh`, rendering tests, README warnings, and the hardware record. Do not relax one location independently.
+
+=== Identity or password
+
+Identity is tracked in `nocloud/user-data`; hostname metadata also lives in `nocloud/meta-data`. After changing either, update documentation and run `task test-render-autoinstall`, a clean VM-test build, and `task vm-test`.
+
+== Generated state
+
+`DATA/` is disposable build state except for its tracked `.gitkeep` files. A clean build removes extracted, remastered, rendered, and package work directories but retains the official ISO download. VM qcow2 files and logs are independent and are replaced when their corresponding VM task runs.
+
+The verified-file cache beside the official ISO binds the expected SHA256 to filesystem metadata. Set `ISO_FORCE_VERIFY=1` when a full rehash is required.
+
+== Release-readiness boundary
+
+A commit can be source-ready after static checks and a clean VM-tested build. An ISO can be called recovery-ready only after:
+
+* production ISO sidecar verification;
+* full eMMC backup and restore-readability evidence;
+* powered-OTG physical installation with Secure Boot disabled;
+* automatic poweroff and internal boot;
+* Yoga Book kernel, package, dpkg, and offline APT checks;
+* touch, pen, sound, sensors, Wi-Fi, Bluetooth, suspend/resume, and reboot checks;
+* preserved installer logs and a completed dated hardware record.
