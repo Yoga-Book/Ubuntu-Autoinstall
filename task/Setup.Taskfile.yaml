@@ -4,4 +4,4 @@ tasks:
   default:
     cmds:
       - sudo apt-get update
-      - sudo apt-get install -y curl wget whois xorriso genisoimage isolinux grub-pc-bin grub-efi-amd64-bin mtools rsync squashfs-tools cloud-init python3-jsonschema python3-yaml qemu-system-x86 qemu-utils
+      - sudo apt-get install -y curl wget whois xorriso genisoimage isolinux grub-pc-bin grub-efi-amd64-bin mtools rsync squashfs-tools cloud-init python3-jsonschema python3-yaml qemu-system-x86 qemu-utils coreutils util-linux jq
