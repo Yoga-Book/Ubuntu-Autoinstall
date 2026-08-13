@@ -11,6 +11,7 @@ tasks:
         mkdir -p DATA/ISO/official
         ISO_BASENAME="$(basename "$ISO_URL")"
         ISO_PATH="DATA/ISO/official/$ISO_BASENAME"
+        VERIFICATION_CACHE="$ISO_PATH.sha256-verified"
         EXPECTED_SHA256="${ISO_SHA256:-}"
         if [ -z "$EXPECTED_SHA256" ]; then
           SHA256SUMS_URL="${ISO_URL%/*}/SHA256SUMS"
@@ -21,14 +22,28 @@ tasks:
             exit 1
           fi
         fi
-        if [ -f "$ISO_PATH" ] && echo "$EXPECTED_SHA256  $ISO_PATH" | sha256sum --check --status; then
-          echo "ISO already downloaded and verified at $ISO_PATH"
-          exit 0
+        if [ -f "$ISO_PATH" ]; then
+          CACHE_KEY="$EXPECTED_SHA256  $(stat --format='%d:%i:%s:%y:%z' "$ISO_PATH")"
+          if [ "${ISO_FORCE_VERIFY:-0}" != "1" ] \
+            && [ -f "$VERIFICATION_CACHE" ] \
+            && [ "$(cat "$VERIFICATION_CACHE")" = "$CACHE_KEY" ]; then
+            echo "ISO already downloaded and unchanged since verification at $ISO_PATH"
+            exit 0
+          fi
+          if echo "$EXPECTED_SHA256  $ISO_PATH" | sha256sum --check --status; then
+            printf '%s\n' "$CACHE_KEY" > "$VERIFICATION_CACHE.part"
+            mv "$VERIFICATION_CACHE.part" "$VERIFICATION_CACHE"
+            echo "ISO already downloaded and verified at $ISO_PATH"
+            exit 0
+          fi
         fi
         PARTIAL_ISO="$ISO_PATH.part"
         wget --continue --progress=dot:giga -O "$PARTIAL_ISO" "$ISO_URL"
         echo "$EXPECTED_SHA256  $PARTIAL_ISO" | sha256sum --check
         mv "$PARTIAL_ISO" "$ISO_PATH"
+        CACHE_KEY="$EXPECTED_SHA256  $(stat --format='%d:%i:%s:%y:%z' "$ISO_PATH")"
+        printf '%s\n' "$CACHE_KEY" > "$VERIFICATION_CACHE.part"
+        mv "$VERIFICATION_CACHE.part" "$VERIFICATION_CACHE"
         echo "Downloaded and verified ISO at $ISO_PATH"
   extract:
     desc: "Extract ISO contents to DATA/ISO/extracted/<iso-file-name> (without .iso) using the $ISO_FILE environment variable."

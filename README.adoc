@@ -61,6 +61,7 @@ cp .example.env .env
 
 You can also customize these variables in your `.env` file to use a different Ubuntu version or ISO source as needed.
 When using a custom image, set its `ISO_SHA256`; if omitted, `iso:download` attempts to obtain the checksum from `SHA256SUMS` next to `ISO_URL`.
+After a successful checksum pass, `iso:download` caches the verified file metadata so subsequent runs can skip hashing an unchanged multi-gigabyte ISO. Set `ISO_FORCE_VERIFY=1` to force a fresh full checksum verification.
 
 WARNING: The unattended storage configuration erases the selected installation disk. Review `nocloud/user-data` before booting the remastered image.
 
