@@ -283,9 +283,17 @@ tasks:
         xorriso -osirrox on -indev "$OUTPUT_ISO" \
           -extract /nocloud "$VERIFY_DIR/iso/nocloud" \
           -extract /pool/yoga-book "$VERIFY_DIR/iso/yoga-book" \
+          -extract /boot/grub/grub.cfg "$VERIFY_DIR/grub.cfg" \
+          -extract /boot/grub/loopback.cfg "$VERIFY_DIR/loopback.cfg" \
           -extract /md5sum.txt "$VERIFY_DIR/md5sum.txt" >/dev/null 2>&1
         diff -ru DATA/autoinstall/nocloud "$VERIFY_DIR/iso/nocloud"
         diff -rq "$EXTRACT_DIR/pool/yoga-book" "$VERIFY_DIR/iso/yoga-book"
+        cmp patch/official/boot/grub/grub.cfg "$VERIFY_DIR/grub.cfg"
+        cmp patch/official/boot/grub/loopback.cfg "$VERIFY_DIR/loopback.cfg"
+        grep -Fxq 'set timeout=1' "$VERIFY_DIR/grub.cfg"
+        grep -Fxq 'set timeout=1' "$VERIFY_DIR/loopback.cfg"
+        grep -Fxq 'default=0' "$VERIFY_DIR/grub.cfg"
+        grep -Fxq 'default=0' "$VERIFY_DIR/loopback.cfg"
         cmp "$EXTRACT_DIR/md5sum.txt" "$VERIFY_DIR/md5sum.txt"
         grep -Fq 'id: ubuntu-desktop' "$VERIFY_DIR/iso/nocloud/user-data"
         grep -Fq 'search_drivers: false' "$VERIFY_DIR/iso/nocloud/user-data"

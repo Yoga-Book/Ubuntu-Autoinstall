@@ -243,7 +243,7 @@ Do not run headless and graphical tests concurrently unless the host has enough 
 . Back up the entire eMMC and prove that the backup is readable.
 . Disable Secure Boot in the Yoga Book firmware settings.
 . Connect the USB drive and external power through a powered OTG hub.
-. Boot the Yoga Book from USB and select `Ubuntu Autoinstall` if the default entry does not start automatically.
+. Boot the Yoga Book from USB. `Ubuntu Autoinstall` is selected automatically after a one-second GRUB countdown; press an arrow key immediately to use a diagnostic entry.
 . Leave the installation unattended. A hardware mismatch aborts before storage configuration; success powers the machine off.
 . Remove the USB drive and boot from internal eMMC.
 . Log in as `yoga` / `yoga`, immediately run `passwd`, and complete the acceptance procedure below.
