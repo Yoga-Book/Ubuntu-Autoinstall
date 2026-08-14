@@ -1,37 +1,34 @@
 #!/bin/sh
 set -eu
 
+SCRIPT_DIR="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
+. "$SCRIPT_DIR/verify-target-lib.sh"
+
 MODE="${1:?missing guard mode}"
-TARGET_DISK="${2:?missing target disk}"
-
-fail() {
-  echo "AUTOINSTALL SAFETY ABORT: $*" >&2
-  exit 1
-}
-
-[ -b "$TARGET_DISK" ] || fail "$TARGET_DISK is not a block device"
+REQUESTED_TARGET="${2:?missing target disk}"
 
 if [ "$MODE" = test ]; then
-  case "$TARGET_DISK" in
+  [ -b "$REQUESTED_TARGET" ] || fail "$REQUESTED_TARGET is not a block device"
+  case "$REQUESTED_TARGET" in
     /dev/vd[a-z]|/dev/sd[a-z]) ;;
     *) fail "test mode target is not a whole virtio or SCSI disk" ;;
   esac
-  echo "Test-only target accepted: $TARGET_DISK"
+  echo "Test-only target accepted: $REQUESTED_TARGET"
   exit 0
 fi
 
 [ "$MODE" = production ] || fail "unknown guard mode $MODE"
-[ "$TARGET_DISK" = /dev/mmcblk0 ] || fail "production target must be /dev/mmcblk0"
 
 PRODUCT_NAME="$(tr -d '\000\r\n' < /sys/class/dmi/id/product_name)"
 [ "$PRODUCT_NAME" = "Lenovo YB1-X91L" ] \
   || fail "DMI product is '$PRODUCT_NAME', expected 'Lenovo YB1-X91L'"
 
-REMOVABLE="$(cat /sys/class/block/mmcblk0/removable)"
-[ "$REMOVABLE" = 0 ] || fail "/dev/mmcblk0 is marked removable"
-
-EMMC_MODEL="$(tr -d '[:space:]' < /sys/class/block/mmcblk0/device/name)"
-[ "$EMMC_MODEL" = CWBD3R ] || fail "eMMC model is '$EMMC_MODEL', expected 'CWBD3R'"
+TARGET_DISK="$(find_production_target /sys/class/block)"
+[ -b "$TARGET_DISK" ] || fail "$TARGET_DISK is not a block device"
+case "$REQUESTED_TARGET" in
+  /dev/yogabook-emmc|"$TARGET_DISK") ;;
+  *) fail "production target request '$REQUESTED_TARGET' does not match discovered eMMC $TARGET_DISK" ;;
+esac
 
 command -v mokutil >/dev/null 2>&1 \
   || fail "mokutil is unavailable; cannot verify Secure Boot state"
@@ -43,4 +40,5 @@ fi
 printf '%s\n' "$SECURE_BOOT_STATE" | grep -qi 'SecureBoot disabled' \
   || fail "Secure Boot state is not explicitly disabled"
 
-echo "Yoga Book hardware, eMMC, and Secure Boot checks passed for $TARGET_DISK"
+patch_autoinstall_target /autoinstall.yaml "$TARGET_DISK"
+echo "Yoga Book hardware, CJNB4R eMMC $TARGET_DISK, and Secure Boot checks passed"

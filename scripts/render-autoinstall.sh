@@ -8,7 +8,7 @@ OUTPUT_DIR="${1:-DATA/autoinstall/nocloud}"
 
 case "$TEST_MODE" in
   0)
-    TARGET_DISK=/dev/mmcblk0
+    TARGET_DISK=/dev/yogabook-emmc
     GUARD_MODE=production
     ;;
   1)
@@ -33,10 +33,11 @@ rm -rf "$OUTPUT_DIR"
 mkdir -p "$OUTPUT_DIR"
 DISK_ESCAPED="$(printf '%s' "$TARGET_DISK" | sed 's/[&|]/\\&/g')"
 sed \
-  -e "s|/dev/mmcblk0|$DISK_ESCAPED|g" \
+  -e "s|/dev/yogabook-emmc|$DISK_ESCAPED|g" \
   "$REPO_ROOT/nocloud/user-data" > "$OUTPUT_DIR/user-data"
 install -m 0444 "$REPO_ROOT/nocloud/meta-data" "$OUTPUT_DIR/meta-data"
 install -m 0555 "$REPO_ROOT/nocloud/verify-target.sh" "$OUTPUT_DIR/verify-target.sh"
+install -m 0444 "$REPO_ROOT/nocloud/verify-target-lib.sh" "$OUTPUT_DIR/verify-target-lib.sh"
 install -m 0555 "$REPO_ROOT/nocloud/vm-verify.sh" "$OUTPUT_DIR/vm-verify.sh"
 install -m 0444 "$REPO_ROOT/nocloud/yogabook-vm-verify.service" "$OUTPUT_DIR/yogabook-vm-verify.service"
 printf '%s\n' "$GUARD_MODE" > "$OUTPUT_DIR/guard-mode"

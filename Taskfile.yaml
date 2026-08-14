@@ -65,6 +65,11 @@ tasks:
     cmds:
       - scripts/test-render-autoinstall.sh
 
+  test-target-guard:
+    desc: "Verify dynamic production eMMC discovery and storage-target patching."
+    cmds:
+      - scripts/test-verify-target.sh
+
   password-check:
     aliases:
       - pc

@@ -31,6 +31,7 @@ No single layer substitutes for another. For example, a valid ISO checksum does 
 | `nocloud/user-data` | Production autoinstall, identity, storage, offline package installation, kernel selection, and shutdown.
 | `nocloud/meta-data` | NoCloud instance ID and local hostname.
 | `nocloud/verify-target.sh` | Destructive-storage guard for production and restricted disk guard for tests.
+| `nocloud/verify-target-lib.sh` | Fail-closed eMMC discovery and runtime autoinstall-target patching helpers.
 | `nocloud/vm-verify.sh` | Installed-system assertions and serial success marker for VM mode.
 | `nocloud/yogabook-vm-verify.service` | One-shot first-boot verifier enabled only in VM-test images.
 | `patch/official/boot/grub/` | Autoinstall-first GRUB menus for direct and loopback boot.
@@ -74,17 +75,16 @@ structural ISO verification -> guarded USB write -> VM/hardware acceptance
 
 Production rendering copies `nocloud/user-data` unchanged and writes `guard-mode=production`. The early command then requires:
 
-* whole block device `/dev/mmcblk0`;
 * DMI `Lenovo YB1-X91L`;
-* non-removable `mmcblk0`;
-* eMMC model `CWBD3R`;
+* exactly one non-removable MMC disk with model `CJNB4R`;
+* boot devices with that disk's dynamically assigned name plus `boot0` and `boot1`;
 * an explicit `SecureBoot disabled` result from `mokutil`.
 
-The guard fails closed when it cannot determine any required value.
+The guard fails closed when it cannot determine any required value or finds an ambiguous match. Linux MMC enumeration names are not stable when a microSD is added or removed, so production `user-data` uses `/dev/yogabook-emmc` only as a placeholder. The early command discovers the eMMC, verifies it, and replaces the placeholder in `/autoinstall.yaml`. This follows the https://canonical-subiquity.readthedocs-hosted.com/en/latest/reference/autoinstall-reference.html#early-commands[Subiquity early-command contract]: the file is re-read after early commands and before block-device probing specifically so those commands can alter the configuration.
 
 === VM test
 
-Test rendering accepts only whole `/dev/vdX` or `/dev/sdX` disks, replaces every `/dev/mmcblk0` occurrence with the selected test disk, and writes `guard-mode=test`. Test guard mode does not inspect physical DMI, eMMC, or Secure Boot state.
+Test rendering accepts only whole `/dev/vdX` or `/dev/sdX` disks, replaces every `/dev/yogabook-emmc` occurrence with the selected test disk, and writes `guard-mode=test`. Test guard mode does not inspect physical DMI, eMMC, or Secure Boot state.
 
 VM-only late commands add serial consoles, install the verifier, enable its systemd service, and power off after the success marker. These additions must never appear in a production rendering.
 
@@ -150,7 +150,7 @@ Then run the complete clean build and VM acceptance test. Never infer compatibil
 
 === Device or storage target
 
-The YB1-X91L, `CWBD3R`, and `/dev/mmcblk0` values form one destructive-safety contract across `user-data`, `verify-target.sh`, rendering tests, README warnings, and the hardware record. Do not relax one location independently.
+The YB1-X91L, `CJNB4R`, non-removable flag, dynamic eMMC boot-device checks, and `/dev/yogabook-emmc` placeholder form one destructive-safety contract across `user-data`, `verify-target.sh`, rendering tests, README warnings, and the hardware record. The observed `ED4QT` microSD must never be accepted, regardless of whether Linux names it `mmcblk0` or `mmcblk1`. Do not relax one location independently.
 
 === Identity or password
 

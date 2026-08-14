@@ -27,12 +27,12 @@ autoinstall:
     username: yoga
     password: "$6$fywbi1lu3Ea97e9V$4hq1EHmuvkk3/lX9TUyuvnr4eleA76apESfZZioPUn2X0FMOCa5guFWvw7i6QS9vOwdFPwgE9hfWfHi7V1HjV."
   early-commands:
-    - /bin/sh /cdrom/nocloud/verify-target.sh "$(cat /cdrom/nocloud/guard-mode)" "/dev/mmcblk0"
+    - /bin/sh /cdrom/nocloud/verify-target.sh "$(cat /cdrom/nocloud/guard-mode)" "/dev/yogabook-emmc"
   storage:
     layout:
       name: direct
       match:
-        path: "/dev/mmcblk0"
+        path: "/dev/yogabook-emmc"
   late-commands:
     - install -d /target/opt/yoga-book-debs
     - cp -a /cdrom/pool/yoga-book/. /target/opt/yoga-book-debs/

@@ -42,6 +42,10 @@ PRODUCTION_OUTPUT="$TEST_DIR/production"
 cmp "$SOURCE_USER_DATA" "$PRODUCTION_OUTPUT/user-data"
 [ "$(rendered_hash "$PRODUCTION_OUTPUT")" = "$DEFAULT_HASH" ]
 grep -Fxq production "$PRODUCTION_OUTPUT/guard-mode"
+grep -Fq '/dev/yogabook-emmc' "$PRODUCTION_OUTPUT/user-data"
+grep -Fq 'MODEL" = CJNB4R' "$PRODUCTION_OUTPUT/verify-target-lib.sh"
+grep -Fq '${BLOCK_NAME}boot0' "$PRODUCTION_OUTPUT/verify-target-lib.sh"
+grep -Fq '${BLOCK_NAME}boot1' "$PRODUCTION_OUTPUT/verify-target-lib.sh"
 
 VM_OUTPUT="$TEST_DIR/vm"
 (
@@ -51,13 +55,13 @@ VM_OUTPUT="$TEST_DIR/vm"
 )
 [ "$(rendered_hash "$VM_OUTPUT")" = "$DEFAULT_HASH" ]
 grep -Fq '/dev/vda' "$VM_OUTPUT/user-data"
-if grep -Fq '/dev/mmcblk0' "$VM_OUTPUT/user-data"; then
+if grep -Fq '/dev/yogabook-emmc' "$VM_OUTPUT/user-data"; then
   echo "Error: VM rendering retained the production eMMC target." >&2
   exit 1
 fi
 grep -Fxq test "$VM_OUTPUT/guard-mode"
 
-if AUTOINSTALL_TEST_MODE=1 AUTOINSTALL_TARGET_DISK=/dev/mmcblk0 \
+if AUTOINSTALL_TEST_MODE=1 AUTOINSTALL_TARGET_DISK=/dev/mmcblk1 \
   "$RENDERER" "$TEST_DIR/invalid" >/dev/null 2>&1; then
   echo "Error: VM rendering accepted the production eMMC target." >&2
   exit 1

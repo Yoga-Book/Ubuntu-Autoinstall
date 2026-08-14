@@ -8,13 +8,13 @@ This repository produces a *candidate image*. It is not recovery-ready until the
 
 == Read this before building
 
-WARNING: The production image erases the complete `/dev/mmcblk0` eMMC after its safety checks pass. It has no preservation, dual-boot, or in-place-upgrade mode. Back up all required data and prove that the backup is readable before booting the installer.
+WARNING: The production image dynamically discovers and erases the complete internal `CJNB4R` eMMC after its safety checks pass. It has no preservation, dual-boot, or in-place-upgrade mode. Back up all required data and prove that the backup is readable before booting the installer.
 
 The production installer refuses to configure storage unless all of these checks pass:
 
 * the DMI product name is exactly `Lenovo YB1-X91L`;
-* `/dev/mmcblk0` exists and is a non-removable block device;
-* the eMMC model is exactly `CWBD3R`;
+* exactly one non-removable MMC disk has model `CJNB4R`;
+* that disk exposes matching `boot0` and `boot1` devices, distinguishing it from the `ED4QT` microSD;
 * `mokutil` explicitly reports that Secure Boot is disabled.
 
 Secure Boot must remain disabled because `6.17.4-yogabook1` is unsigned. The installer selects that kernel through `GRUB_TOP_LEVEL`; Ubuntu's generic 7.0 kernel remains installed as a fallback.
@@ -28,7 +28,7 @@ The autoinstall selects the full `ubuntu-desktop` source and configures:
 * locale `en_US.UTF-8`, Italian keyboard layout, and timezone `Europe/Rome`;
 * no installer refresh, GeoIP lookup, online driver search, or driver installation;
 * no configured Ethernet interfaces and APT's `offline-install` fallback;
-* a direct whole-disk layout on `/dev/mmcblk0` in production;
+* a direct whole-disk layout on the dynamically discovered `CJNB4R` eMMC in production;
 * the five selected Yoga Book packages plus their offline Ubuntu dependency closure;
 * `6.17.4-yogabook1` as GRUB's top-level kernel;
 * an automatic poweroff after installation.
@@ -266,7 +266,10 @@ Record the device identity, ISO digest, backup evidence, installer logs, and the
 [source,shell]
 ----
 test "$(cat /sys/class/dmi/id/product_name)" = "Lenovo YB1-X91L"
-test "$(tr -d '[:space:]' </sys/class/block/mmcblk0/device/name)" = CWBD3R
+EMMC="$(for D in /sys/class/block/mmcblk[0-9]; do test -r "$D/device/name" || continue; test "$(tr -d '[:space:]' <"$D/device/name")" = CJNB4R && basename "$D"; done)"
+test -n "$EMMC"
+test -b "/dev/${EMMC}boot0"
+test -b "/dev/${EMMC}boot1"
 test "$(uname -r)" = 6.17.4-yogabook1
 sudo dpkg --audit
 sudo apt-get --no-download check
@@ -295,6 +298,7 @@ Run `task --list-all` for the live command list.
 | `task iso:burn:usb` | Reuse the existing production ISO, select a USB disk, safely unmount its desktop-mounted filesystems, write it, and verify it by reading it back.
 | `task iso:build:burn:usb` | Clean-build and verify the production ISO, then run the guarded USB writer.
 | `task iso:burn:usb:test` | Run the non-destructive USB discovery, safety, confirmation, and verification tests.
+| `task test-target-guard` | Verify dynamic `CJNB4R` eMMC discovery, microSD exclusion, and storage-target patching.
 | `task iso:extract` | Extract the configured `ISO_FILE`; requires an empty destination.
 | `task iso:render-autoinstall` | Render tracked NoCloud data for production or VM-test mode.
 | `task iso:validate-autoinstall` | Render and validate against host cloud-init and the exact source-ISO Subiquity schema.

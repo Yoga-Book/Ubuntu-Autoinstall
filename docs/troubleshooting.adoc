@@ -82,7 +82,7 @@ The second command requires an extracted source ISO because it validates against
 
 === Wrong target disk in rendered data
 
-Production must contain `/dev/mmcblk0`; VM mode must contain `/dev/vda` and no `/dev/mmcblk0`. Rebuild through the supported top-level task rather than exporting test variables manually:
+Production must contain the `/dev/yogabook-emmc` placeholder; the early safety command replaces it with the discovered `CJNB4R` eMMC path before Subiquity reloads the configuration. VM mode must contain `/dev/vda` and no production placeholder. Rebuild through the supported top-level task rather than exporting test variables manually:
 
 [source,shell]
 ----
@@ -178,7 +178,8 @@ Run `task build-vm-test`. A later production `task build` removes generated test
 An `AUTOINSTALL SAFETY ABORT` is a protective failure before storage configuration. Do not bypass it. Confirm:
 
 * the device is exactly YB1-X91L;
-* the internal disk is `/dev/mmcblk0`, non-removable, and model `CWBD3R`;
+* exactly one non-removable MMC disk has model `CJNB4R` and matching `boot0` and `boot1` devices;
+* the inserted `ED4QT` microSD is not selected, regardless of its `mmcblkN` enumeration name;
 * Secure Boot is explicitly disabled;
 * the production ISO—not the VM-test ISO—was written to USB.
 

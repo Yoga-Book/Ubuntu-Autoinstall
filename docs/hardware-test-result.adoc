@@ -36,13 +36,19 @@ Capture the machine-readable baseline:
 [source,shell]
 ----
 cat /sys/class/dmi/id/product_name
-tr -d '[:space:]' </sys/class/block/mmcblk0/device/name; echo
-cat /sys/class/block/mmcblk0/removable
+for disk in /sys/class/block/mmcblk[0-9]; do
+  test -r "$disk/device/name" || continue
+  printf '%s model=%s removable=%s\n' \
+    "$(basename "$disk")" \
+    "$(tr -d '[:space:]' <"$disk/device/name")" \
+    "$(cat "$disk/removable")"
+done
+ls -l /dev/mmcblk*boot0 /dev/mmcblk*boot1
 sudo mokutil --sb-state
 uname -a
 ----
 
-Expected values are `Lenovo YB1-X91L`, `CWBD3R`, removable flag `0`, explicit `SecureBoot disabled`, and installed kernel `6.17.4-yogabook1`.
+Expected values are `Lenovo YB1-X91L`, exactly one `CJNB4R` disk with removable flag `0` and both matching eMMC boot devices, explicit `SecureBoot disabled`, and installed kernel `6.17.4-yogabook1`. An inserted `ED4QT` microSD may use either `mmcblkN` name and must not be the installation target.
 
 == Automated installation and integrity
 
