@@ -40,6 +40,8 @@ install -m 0555 "$REPO_ROOT/nocloud/verify-target.sh" "$OUTPUT_DIR/verify-target
 install -m 0444 "$REPO_ROOT/nocloud/verify-target-lib.sh" "$OUTPUT_DIR/verify-target-lib.sh"
 install -m 0555 "$REPO_ROOT/nocloud/vm-verify.sh" "$OUTPUT_DIR/vm-verify.sh"
 install -m 0444 "$REPO_ROOT/nocloud/yogabook-vm-verify.service" "$OUTPUT_DIR/yogabook-vm-verify.service"
+install -m 0555 "$REPO_ROOT/nocloud/yogabook-graphical-health.sh" "$OUTPUT_DIR/yogabook-graphical-health.sh"
+install -m 0444 "$REPO_ROOT/nocloud/yogabook-graphical-health.service" "$OUTPUT_DIR/yogabook-graphical-health.service"
 printf '%s\n' "$GUARD_MODE" > "$OUTPUT_DIR/guard-mode"
 
 if grep -Rq '@@[A-Z_][A-Z_]*@@' "$OUTPUT_DIR"; then

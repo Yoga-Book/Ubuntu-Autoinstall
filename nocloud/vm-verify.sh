@@ -5,6 +5,12 @@ exec > /var/log/yogabook-vm-verify.log 2>&1
 test "$(uname -r)" = 7.2.0-rc7-yogabook2
 test -z "$(dpkg --audit)"
 apt-get --no-download check
+test "$(dpkg-query -W -f='${Status}' ubuntu-desktop-minimal)" = "install ok installed"
+if dpkg-query -W -f='${Status}\n' ubuntu-desktop 2>/dev/null \
+  | grep -Fxq 'install ok installed'; then
+  echo "Error: the full ubuntu-desktop profile is installed." >&2
+  exit 1
+fi
 dpkg-query -W \
   alsa-ucm-conf-yogabook \
   linux-headers-7.2.0-rc7-yogabook2 \

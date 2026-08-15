@@ -185,6 +185,28 @@ An `AUTOINSTALL SAFETY ABORT` is a protective failure before storage configurati
 
 If `mokutil` is unavailable or cannot determine state, the guard intentionally fails closed.
 
+== GDM starts but the boot console remains visible
+
+`Started gdm.service` proves that systemd launched the display manager; it does not prove that GNOME's Wayland greeter acquired the DSI display. The Yoga Book support and touch-keyboard daemons do not start GDM and do not implement the DRM/KMS display path. On Ubuntu 26.04's minimized desktop, a connected/enabled DRM DSI connector and a running `gnome-shell` are required for the greeter.
+
+The production image waits two minutes after cloud-init and GDM. If graphical health still fails on the custom kernel, it captures evidence and selects the preserved generic Ubuntu kernel once. After the reboot, collect:
+
+[source,shell]
+----
+uname -r
+cat /etc/default/grub.d/60-yogabook.cfg
+sudo cat /var/log/yogabook-graphical-health/boot.log
+sudo cat /var/lib/yogabook-graphical-health/generic-fallback-configured
+systemctl status gdm yogabook-graphical-health --no-pager
+for F in /sys/class/drm/card*-DSI-*/{status,enabled,modes}; do
+  test -f "$F" && echo "--- $F" && cat "$F"
+done
+sudo journalctl -b -u gdm --no-pager
+sudo journalctl -b -k --no-pager | grep -Ei 'drm|i915|dsi|panel|firmware|error|fail'
+----
+
+If the generic kernel reaches GNOME and the custom kernel does not, the failure is kernel/i915/DSI-specific. If both kernels expose a healthy connector but `gnome-shell` fails, inspect the GDM journal for a userspace/Mutter failure. To retry the custom kernel manually, restore `GRUB_TOP_LEVEL=/boot/vmlinuz-7.2.0-rc7-yogabook2`, run `sudo update-grub`, and choose it from the visible GRUB menu. Do not delete the fallback stamp until its saved evidence has been copied.
+
 == Installed system boots the wrong kernel
 
 Collect:
@@ -201,6 +223,6 @@ The expected top-level setting is `GRUB_TOP_LEVEL=/boot/vmlinuz-7.2.0-rc7-yogabo
 
 == Collecting evidence
 
-For build failures, retain the complete Task output and generated manifests. For VM failures, retain the qcow2 disk and both serial logs. For hardware failures, preserve `/var/log/installer/`, `/var/log/yogabook-vm-verify.log` when applicable, the exact ISO SHA256, and a dated copy of `hardware-test-result.adoc`.
+For build failures, retain the complete Task output and generated manifests. For VM failures, retain the qcow2 disk and both serial logs. For hardware failures, preserve `/var/log/installer/`, `/var/log/yogabook-graphical-health/`, the fallback stamp when present, the exact ISO SHA256, and a dated copy of `hardware-test-result.adoc`.
 
 Do not describe an image as recovery-ready while a required check is missing or failed.

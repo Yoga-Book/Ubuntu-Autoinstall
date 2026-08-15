@@ -45,6 +45,7 @@ autoinstall:
     - curtin in-target --target=/target -- sh -c 'find /boot -maxdepth 1 -type f -name "vmlinuz-7.0.0-*-generic" -print -quit | grep -q .'
     - curtin in-target --target=/target -- sh -c 'printf "%s\n" "GRUB_TOP_LEVEL=/boot/vmlinuz-7.2.0-rc7-yogabook2" > /etc/default/grub.d/60-yogabook.cfg'
     - sh -c 'if [ "$(cat /cdrom/nocloud/guard-mode)" = test ]; then printf "%s\n" "GRUB_CMDLINE_LINUX_DEFAULT=\"console=tty0 console=ttyS0\"" > /target/etc/default/grub.d/61-yogabook-vm-test.cfg; install -m 0755 /cdrom/nocloud/vm-verify.sh /target/usr/local/sbin/yogabook-vm-verify; install -m 0644 /cdrom/nocloud/yogabook-vm-verify.service /target/etc/systemd/system/yogabook-vm-verify.service; curtin in-target --target=/target -- systemctl enable yogabook-vm-verify.service; fi'
+    - sh -c 'if [ "$(cat /cdrom/nocloud/guard-mode)" = production ]; then printf "%s\n" "GRUB_TIMEOUT_STYLE=menu" "GRUB_TIMEOUT=5" "GRUB_RECORDFAIL_TIMEOUT=10" > /target/etc/default/grub.d/62-yogabook-recovery.cfg; install -m 0755 /cdrom/nocloud/yogabook-graphical-health.sh /target/usr/local/sbin/yogabook-graphical-health; install -m 0644 /cdrom/nocloud/yogabook-graphical-health.service /target/etc/systemd/system/yogabook-graphical-health.service; curtin in-target --target=/target -- systemctl enable yogabook-graphical-health.service; fi'
     - curtin in-target --target=/target -- update-grub
     - curtin in-target --target=/target -- sh -c 'test -z "$(dpkg --audit)"'
     - curtin in-target --target=/target -- apt-get --no-download check

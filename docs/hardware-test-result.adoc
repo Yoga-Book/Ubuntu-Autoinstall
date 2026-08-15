@@ -64,6 +64,9 @@ Expected values are `Lenovo YB1-X91L`, exactly one `CJNB4R` disk with removable 
 | `uname -r` is `7.2.0-rc7-yogabook2` | NO | NOT TESTED
 | Generic Ubuntu 7.0 kernel remains as fallback | NO | NOT TESTED
 | `GRUB_TOP_LEVEL` selects Yoga Book kernel | NO | NOT TESTED
+| DSI connector is connected and enabled | NO | NOT TESTED
+| GDM and `gnome-shell` reach graphical health | NO | NOT TESTED
+| Automatic generic-kernel fallback was not needed, or its result is recorded | NO | NOT TESTED
 | `dpkg --audit` is empty | NO | NOT TESTED
 | Offline `apt-get check` passes | NO | NOT TESTED
 | Five selected Yoga Book packages installed | NO | NOT TESTED
@@ -81,6 +84,10 @@ test -f /boot/vmlinuz-7.2.0-rc7-yogabook2
 test -f /boot/initrd.img-7.2.0-rc7-yogabook2
 find /boot -maxdepth 1 -name 'vmlinuz-7.0.0-*-generic' -print
 cat /etc/default/grub.d/60-yogabook.cfg
+systemctl status gdm yogabook-graphical-health --no-pager
+cat /var/log/yogabook-graphical-health/boot.log
+test ! -e /var/lib/yogabook-graphical-health/generic-fallback-configured || \
+  cat /var/lib/yogabook-graphical-health/generic-fallback-configured
 sudo dpkg --audit
 sudo apt-get --no-download check
 dpkg-query -W \

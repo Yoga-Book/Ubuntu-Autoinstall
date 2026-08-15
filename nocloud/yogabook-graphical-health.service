@@ -1,0 +1,13 @@
+[Unit]
+Description=Verify Yoga Book graphical boot and select the generic-kernel fallback
+After=cloud-final.service display-manager.service systemd-user-sessions.service
+Wants=display-manager.service
+ConditionPathExists=/etc/default/grub.d/60-yogabook.cfg
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/yogabook-graphical-health
+TimeoutStartSec=5min
+
+[Install]
+WantedBy=graphical.target

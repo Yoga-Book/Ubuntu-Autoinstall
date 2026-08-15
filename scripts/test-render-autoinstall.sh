@@ -46,6 +46,14 @@ grep -Fq '/dev/yogabook-emmc' "$PRODUCTION_OUTPUT/user-data"
 grep -Fq 'MODEL" = CJNB4R' "$PRODUCTION_OUTPUT/verify-target-lib.sh"
 grep -Fq '${BLOCK_NAME}boot0' "$PRODUCTION_OUTPUT/verify-target-lib.sh"
 grep -Fq '${BLOCK_NAME}boot1' "$PRODUCTION_OUTPUT/verify-target-lib.sh"
+test -x "$PRODUCTION_OUTPUT/yogabook-graphical-health.sh"
+test -f "$PRODUCTION_OUTPUT/yogabook-graphical-health.service"
+grep -Fq 'GRUB_TIMEOUT_STYLE=menu' "$PRODUCTION_OUTPUT/user-data"
+grep -Fq 'systemctl enable yogabook-graphical-health.service' "$PRODUCTION_OUTPUT/user-data"
+grep -Fq "PRODUCT_NAME\" = 'Lenovo YB1-X91L'" "$PRODUCTION_OUTPUT/yogabook-graphical-health.sh"
+grep -Fq '[ "$RUNNING_KERNEL" = "$KERNEL" ]' "$PRODUCTION_OUTPUT/yogabook-graphical-health.sh"
+grep -Fq 'generic-fallback-configured' "$PRODUCTION_OUTPUT/yogabook-graphical-health.sh"
+grep -Fq -- "-name 'vmlinuz-*-generic'" "$PRODUCTION_OUTPUT/yogabook-graphical-health.sh"
 
 VM_OUTPUT="$TEST_DIR/vm"
 (
@@ -60,6 +68,8 @@ if grep -Fq '/dev/yogabook-emmc' "$VM_OUTPUT/user-data"; then
   exit 1
 fi
 grep -Fxq test "$VM_OUTPUT/guard-mode"
+test -x "$VM_OUTPUT/yogabook-graphical-health.sh"
+test -f "$VM_OUTPUT/yogabook-graphical-health.service"
 
 if AUTOINSTALL_TEST_MODE=1 AUTOINSTALL_TARGET_DISK=/dev/mmcblk1 \
   "$RENDERER" "$TEST_DIR/invalid" >/dev/null 2>&1; then

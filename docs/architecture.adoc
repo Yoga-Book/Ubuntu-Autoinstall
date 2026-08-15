@@ -8,7 +8,7 @@ This document explains how the repository turns pinned upstream inputs into a ca
 
 The pipeline separates five kinds of evidence:
 
-. *Pinned source evidence*: `manifests/yogabook-release-debs.tsv` records the filename, hash, and exact source URL for four userspace assets from `debs-20251026` and two kernel assets from `v7.2-rc7-yogabook`.
+. *Pinned source evidence*: `manifests/yogabook-release-debs.tsv` records the filename, hash, and exact source URL for three Ubuntu 26.04 userspace packages and two kernel assets from `v7.2-rc7-yogabook`.
 . *Selection evidence*: `manifests/yogabook-selected-packages.tsv` declares the five package identities that must be installed.
 . *Closure evidence*: `DATA/DEB/packages.manifest` records package name, version, architecture, filename, and SHA256 for every generated dependency package.
 . *Image evidence*: the output `.sha256` sidecar and `iso:verify` prove boot metadata and exact embedded files.
@@ -26,7 +26,7 @@ No single layer substitutes for another. For example, a valid ISO checksum does 
 | `task/Deb.Taskfile.yaml` | Source-package download, selection, dependency resolution, offline proof, manifests, and embedding.
 | `task/ISO.Taskfile.yaml` | Source ISO download, extraction, schema validation, patching, remastering, verification, and cleanup.
 | `.example.env` | Supported source-ISO configuration example.
-| `manifests/yogabook-release-debs.tsv` | Six immutable upstream filenames, digests, and source URLs.
+| `manifests/yogabook-release-debs.tsv` | Five pinned upstream filenames, digests, and source URLs.
 | `manifests/yogabook-selected-packages.tsv` | Five required package identities.
 | `nocloud/user-data` | Production autoinstall, identity, storage, offline package installation, kernel selection, and shutdown.
 | `nocloud/meta-data` | NoCloud instance ID and local hostname.
@@ -34,6 +34,8 @@ No single layer substitutes for another. For example, a valid ISO checksum does 
 | `nocloud/verify-target-lib.sh` | Fail-closed eMMC discovery and runtime autoinstall-target patching helpers.
 | `nocloud/vm-verify.sh` | Installed-system assertions and serial success marker for VM mode.
 | `nocloud/yogabook-vm-verify.service` | One-shot first-boot verifier enabled only in VM-test images.
+| `nocloud/yogabook-graphical-health.sh` | Production-only DSI/GDM health check, evidence capture, and guarded generic-kernel fallback.
+| `nocloud/yogabook-graphical-health.service` | Starts the graphical health check after cloud-init and the display manager.
 | `patch/official/boot/grub/` | Autoinstall-first GRUB menus for direct and loopback boot.
 | `scripts/render-autoinstall.sh` | Deterministic production/test NoCloud rendering.
 | `scripts/package-manifest.sh` | Canonical generated package-manifest format.
@@ -82,15 +84,17 @@ Production rendering copies `nocloud/user-data` unchanged and writes `guard-mode
 
 The guard fails closed when it cannot determine any required value or finds an ambiguous match. Linux MMC enumeration names are not stable when a microSD is added or removed, so production `user-data` uses `/dev/yogabook-emmc` only as a placeholder. The early command discovers the eMMC, verifies it, and replaces the placeholder in `/autoinstall.yaml`. This follows the https://canonical-subiquity.readthedocs-hosted.com/en/latest/reference/autoinstall-reference.html#early-commands[Subiquity early-command contract]: the file is re-read after early commands and before block-device probing specifically so those commands can alter the configuration.
 
+Production late commands expose the installed GRUB menu for five seconds and enable the graphical health service. The service acts only on DMI `Lenovo YB1-X91L` while the exact custom kernel is running. It waits for a connected and enabled DSI connector, active GDM, and `gnome-shell`; on failure it stores boot evidence under `/var/log/yogabook-graphical-health/`, changes `GRUB_TOP_LEVEL` to the newest preserved generic kernel, and reboots once. A persistent stamp prevents automatic reboot loops. VM renderings carry the source files for deterministic ISO content but do not enable or install the service.
+
 === VM test
 
 Test rendering accepts only whole `/dev/vdX` or `/dev/sdX` disks, replaces every `/dev/yogabook-emmc` occurrence with the selected test disk, and writes `guard-mode=test`. Test guard mode does not inspect physical DMI, eMMC, or Secure Boot state.
 
-VM-only late commands add serial consoles, install the verifier, enable its systemd service, and power off after the success marker. These additions must never appear in a production rendering.
+VM-only GRUB patching adds an installer serial console. VM-only late commands retain that console on the installed system, install the verifier, enable its systemd service, and power off after the success marker. These additions must never appear in a production image.
 
 == Offline package design
 
-`deb:download` always starts from an empty upstream directory and verifies exactly six pinned files from their manifest URLs. `deb:resolve` then:
+`deb:download` always starts from an empty upstream directory and verifies exactly five pinned files from their manifest URLs. `deb:resolve` then:
 
 . selects exactly one file for each identity in `yogabook-selected-packages.tsv`;
 . runs an online Ubuntu 26.04 container to download dependencies;
@@ -139,7 +143,7 @@ Changing Ubuntu releases is not only an `.env` edit. Update and verify:
 
 Update together:
 
-* all six filenames, digests, and source URLs in `yogabook-release-debs.tsv`;
+* all five filenames, digests, and source URLs in `yogabook-release-debs.tsv`;
 * all five identities in `yogabook-selected-packages.tsv`;
 * named packages and kernel/initramfs checks in `nocloud/user-data`;
 * `GRUB_TOP_LEVEL` and generic fallback checks;

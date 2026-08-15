@@ -69,4 +69,4 @@ timeout 15m qemu-system-x86_64 \
   -boot c -nic none -display "$VM_TEST_DISPLAY" -serial "file:$BOOT_LOG" -no-reboot
 
 grep -Fq 'YOGABOOK_VM_TEST_PASS kernel=7.2.0-rc7-yogabook2' "$BOOT_LOG"
-echo "NIC-less VM installation powered off, booted the installed disk, selected the Yoga Book kernel, and passed package checks"
+echo "NIC-less VM installation powered off, booted the installed disk, selected the minimized desktop and Yoga Book kernel, and passed package checks"

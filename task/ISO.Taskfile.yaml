@@ -205,6 +205,12 @@ tasks:
           exit 1
         fi
         cp --remove-destination -v "$PATCH_GRUB_DIR"/* "$EXTRACT_DIR/boot/grub/"
+        if [ "${AUTOINSTALL_TEST_MODE:-0}" = 1 ]; then
+          sed -i 's/ --- quiet splash/ console=tty0 console=ttyS0 ---/' \
+            "$EXTRACT_DIR/boot/grub/grub.cfg" \
+            "$EXTRACT_DIR/boot/grub/loopback.cfg"
+          echo "Enabled installer serial output in the test-only GRUB menus"
+        fi
         echo "Patched grub files copied to $EXTRACT_DIR/boot/grub/"
 
   remaster:
@@ -288,8 +294,18 @@ tasks:
           -extract /md5sum.txt "$VERIFY_DIR/md5sum.txt" >/dev/null 2>&1
         diff -ru DATA/autoinstall/nocloud "$VERIFY_DIR/iso/nocloud"
         diff -rq "$EXTRACT_DIR/pool/yoga-book" "$VERIFY_DIR/iso/yoga-book"
-        cmp patch/official/boot/grub/grub.cfg "$VERIFY_DIR/grub.cfg"
-        cmp patch/official/boot/grub/loopback.cfg "$VERIFY_DIR/loopback.cfg"
+        if [ "${AUTOINSTALL_TEST_MODE:-0}" = 1 ]; then
+          sed 's/ --- quiet splash/ console=tty0 console=ttyS0 ---/' \
+            patch/official/boot/grub/grub.cfg > "$VERIFY_DIR/expected-grub.cfg"
+          sed 's/ --- quiet splash/ console=tty0 console=ttyS0 ---/' \
+            patch/official/boot/grub/loopback.cfg > "$VERIFY_DIR/expected-loopback.cfg"
+          cmp "$VERIFY_DIR/expected-grub.cfg" "$VERIFY_DIR/grub.cfg"
+          cmp "$VERIFY_DIR/expected-loopback.cfg" "$VERIFY_DIR/loopback.cfg"
+          grep -Fq 'console=tty0 console=ttyS0' "$VERIFY_DIR/grub.cfg"
+        else
+          cmp patch/official/boot/grub/grub.cfg "$VERIFY_DIR/grub.cfg"
+          cmp patch/official/boot/grub/loopback.cfg "$VERIFY_DIR/loopback.cfg"
+        fi
         grep -Fxq 'set timeout=1' "$VERIFY_DIR/grub.cfg"
         grep -Fxq 'set timeout=1' "$VERIFY_DIR/loopback.cfg"
         grep -Fxq 'default=0' "$VERIFY_DIR/grub.cfg"
