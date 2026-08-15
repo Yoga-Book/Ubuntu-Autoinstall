@@ -35,7 +35,7 @@ command -v mokutil >/dev/null 2>&1 \
 SECURE_BOOT_STATE="$(mokutil --sb-state 2>/dev/null)" \
   || fail "could not determine Secure Boot state"
 if printf '%s\n' "$SECURE_BOOT_STATE" | grep -qi 'SecureBoot enabled'; then
-  fail "Secure Boot is enabled; 6.17.4-yogabook1 is unsigned"
+  fail "Secure Boot is enabled; 7.2.0-rc7-yogabook1 is unsigned"
 fi
 printf '%s\n' "$SECURE_BOOT_STATE" | grep -qi 'SecureBoot disabled' \
   || fail "Secure Boot state is not explicitly disabled"

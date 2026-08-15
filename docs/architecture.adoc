@@ -8,7 +8,7 @@ This document explains how the repository turns pinned upstream inputs into a ca
 
 The pipeline separates five kinds of evidence:
 
-. *Pinned source evidence*: `manifests/yogabook-release-debs.sha256` names and hashes all six files from upstream release `debs-20251026`.
+. *Pinned source evidence*: `manifests/yogabook-release-debs.tsv` records the filename, hash, and exact source URL for four userspace assets from `debs-20251026` and two kernel assets from `v7.2-rc7-yogabook`.
 . *Selection evidence*: `manifests/yogabook-selected-packages.tsv` declares the five package identities that must be installed.
 . *Closure evidence*: `DATA/DEB/packages.manifest` records package name, version, architecture, filename, and SHA256 for every generated dependency package.
 . *Image evidence*: the output `.sha256` sidecar and `iso:verify` prove boot metadata and exact embedded files.
@@ -26,7 +26,7 @@ No single layer substitutes for another. For example, a valid ISO checksum does 
 | `task/Deb.Taskfile.yaml` | Source-package download, selection, dependency resolution, offline proof, manifests, and embedding.
 | `task/ISO.Taskfile.yaml` | Source ISO download, extraction, schema validation, patching, remastering, verification, and cleanup.
 | `.example.env` | Supported source-ISO configuration example.
-| `manifests/yogabook-release-debs.sha256` | Six immutable upstream filenames and digests.
+| `manifests/yogabook-release-debs.tsv` | Six immutable upstream filenames, digests, and source URLs.
 | `manifests/yogabook-selected-packages.tsv` | Five required package identities.
 | `nocloud/user-data` | Production autoinstall, identity, storage, offline package installation, kernel selection, and shutdown.
 | `nocloud/meta-data` | NoCloud instance ID and local hostname.
@@ -90,7 +90,7 @@ VM-only late commands add serial consoles, install the verifier, enable its syst
 
 == Offline package design
 
-`deb:download` always starts from an empty upstream directory and verifies exactly six release files. `deb:resolve` then:
+`deb:download` always starts from an empty upstream directory and verifies exactly six pinned files from their manifest URLs. `deb:resolve` then:
 
 . selects exactly one file for each identity in `yogabook-selected-packages.tsv`;
 . runs an online Ubuntu 26.04 container to download dependencies;
@@ -139,7 +139,7 @@ Changing Ubuntu releases is not only an `.env` edit. Update and verify:
 
 Update together:
 
-* all six filenames and digests in `yogabook-release-debs.sha256`;
+* all six filenames, digests, and source URLs in `yogabook-release-debs.tsv`;
 * all five identities in `yogabook-selected-packages.tsv`;
 * named packages and kernel/initramfs checks in `nocloud/user-data`;
 * `GRUB_TOP_LEVEL` and generic fallback checks;

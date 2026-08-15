@@ -38,12 +38,12 @@ autoinstall:
     - cp -a /cdrom/pool/yoga-book/. /target/opt/yoga-book-debs/
     - curtin in-target --target=/target -- sh -c 'printf "%s\n" "deb [trusted=yes] file:/opt/yoga-book-debs ./" > /tmp/yoga-book-offline.list'
     - curtin in-target --target=/target -- apt-get -o Dir::Etc::sourcelist=/tmp/yoga-book-offline.list -o Dir::Etc::sourceparts=- -o APT::Get::List-Cleanup=0 update
-    - curtin in-target --target=/target -- sh -c 'DEBIAN_FRONTEND=noninteractive apt-get -o Dir::Etc::sourcelist=/tmp/yoga-book-offline.list -o Dir::Etc::sourceparts=- install --yes alsa-ucm-conf-yogabook linux-headers-6.17.4-yogabook1 linux-image-6.17.4-yogabook1 touch-keyboard yogabook-support'
-    - curtin in-target --target=/target -- dpkg-query -W alsa-ucm-conf-yogabook linux-headers-6.17.4-yogabook1 linux-image-6.17.4-yogabook1 touch-keyboard yogabook-support
-    - curtin in-target --target=/target -- test -s /boot/vmlinuz-6.17.4-yogabook1
-    - curtin in-target --target=/target -- test -s /boot/initrd.img-6.17.4-yogabook1
+    - curtin in-target --target=/target -- sh -c 'DEBIAN_FRONTEND=noninteractive apt-get -o Dir::Etc::sourcelist=/tmp/yoga-book-offline.list -o Dir::Etc::sourceparts=- install --yes alsa-ucm-conf-yogabook linux-headers-7.2.0-rc7-yogabook1 linux-image-7.2.0-rc7-yogabook1 touch-keyboard yogabook-support'
+    - curtin in-target --target=/target -- dpkg-query -W alsa-ucm-conf-yogabook linux-headers-7.2.0-rc7-yogabook1 linux-image-7.2.0-rc7-yogabook1 touch-keyboard yogabook-support
+    - curtin in-target --target=/target -- test -s /boot/vmlinuz-7.2.0-rc7-yogabook1
+    - curtin in-target --target=/target -- test -s /boot/initrd.img-7.2.0-rc7-yogabook1
     - curtin in-target --target=/target -- sh -c 'find /boot -maxdepth 1 -type f -name "vmlinuz-7.0.0-*-generic" -print -quit | grep -q .'
-    - curtin in-target --target=/target -- sh -c 'printf "%s\n" "GRUB_TOP_LEVEL=/boot/vmlinuz-6.17.4-yogabook1" > /etc/default/grub.d/60-yogabook.cfg'
+    - curtin in-target --target=/target -- sh -c 'printf "%s\n" "GRUB_TOP_LEVEL=/boot/vmlinuz-7.2.0-rc7-yogabook1" > /etc/default/grub.d/60-yogabook.cfg'
     - sh -c 'if [ "$(cat /cdrom/nocloud/guard-mode)" = test ]; then printf "%s\n" "GRUB_CMDLINE_LINUX_DEFAULT=\"console=tty0 console=ttyS0\"" > /target/etc/default/grub.d/61-yogabook-vm-test.cfg; install -m 0755 /cdrom/nocloud/vm-verify.sh /target/usr/local/sbin/yogabook-vm-verify; install -m 0644 /cdrom/nocloud/yogabook-vm-verify.service /target/etc/systemd/system/yogabook-vm-verify.service; curtin in-target --target=/target -- systemctl enable yogabook-vm-verify.service; fi'
     - curtin in-target --target=/target -- update-grub
     - curtin in-target --target=/target -- sh -c 'test -z "$(dpkg --audit)"'

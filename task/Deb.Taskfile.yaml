@@ -9,11 +9,10 @@ tasks:
         rm -f DATA/DEB/packages.manifest
 
   download:
-    desc: "Download and verify all six pinned debs-20251026 Yoga Book assets."
+    desc: "Download and verify all six pinned Yoga Book package assets."
     cmds:
       - |
-        MANIFEST=manifests/yogabook-release-debs.sha256
-        RELEASE_URL=https://github.com/jekhor/yogabook-linux/releases/download/debs-20251026
+        MANIFEST=manifests/yogabook-release-debs.tsv
         UPSTREAM_DIR=DATA/DEB/upstream
         [ "$(wc -l < "$MANIFEST")" -eq 6 ] || {
           echo "Error: $MANIFEST must pin exactly six release assets." >&2
@@ -21,8 +20,8 @@ tasks:
         }
         mkdir -p "$UPSTREAM_DIR"
         find "$UPSTREAM_DIR" -mindepth 1 -maxdepth 1 -type f -delete
-        while read -r EXPECTED_SHA256 NAME; do
-          [ -n "$EXPECTED_SHA256" ] && [ -n "$NAME" ] || {
+        while IFS="$(printf '\t')" read -r EXPECTED_SHA256 NAME SOURCE_URL; do
+          [ -n "$EXPECTED_SHA256" ] && [ -n "$NAME" ] && [ -n "$SOURCE_URL" ] || {
             echo "Error: malformed line in $MANIFEST" >&2
             exit 1
           }
@@ -32,7 +31,7 @@ tasks:
             && printf '%s  %s\n' "$EXPECTED_SHA256" "$LEGACY_SOURCE" | sha256sum --check --status; then
             cp "$LEGACY_SOURCE" "$DESTINATION"
           else
-            curl --fail --show-error --location --output "$DESTINATION.part" "$RELEASE_URL/$NAME"
+            curl --fail --show-error --location --output "$DESTINATION.part" "$SOURCE_URL"
             mv "$DESTINATION.part" "$DESTINATION"
           fi
           printf '%s  %s\n' "$EXPECTED_SHA256" "$DESTINATION" | sha256sum --check
@@ -41,7 +40,7 @@ tasks:
           echo "Error: expected exactly six downloaded release assets." >&2
           exit 1
         }
-        echo "Downloaded and verified all six debs-20251026 release assets"
+        echo "Downloaded and verified all six pinned Yoga Book package assets"
 
   resolve:
     desc: "Build and network-disable-verify a clean Ubuntu 26.04 offline dependency closure."
@@ -122,8 +121,8 @@ tasks:
             apt-get update
             DEBIAN_FRONTEND=noninteractive apt-get install --yes \
               alsa-ucm-conf-yogabook \
-              linux-headers-6.17.4-yogabook1 \
-              linux-image-6.17.4-yogabook1 \
+              linux-headers-7.2.0-rc7-yogabook1 \
+              linux-image-7.2.0-rc7-yogabook1 \
               touch-keyboard \
               yogabook-support
             test -z "$(dpkg --audit)"
@@ -135,9 +134,9 @@ tasks:
     desc: "Verify release assets, selected identities, and the complete generated package manifest."
     cmds:
       - |
-        while read -r EXPECTED_SHA256 NAME; do
+        while IFS="$(printf '\t')" read -r EXPECTED_SHA256 NAME SOURCE_URL; do
           printf '%s  %s\n' "$EXPECTED_SHA256" "DATA/DEB/upstream/$NAME" | sha256sum --check
-        done < manifests/yogabook-release-debs.sha256
+        done < manifests/yogabook-release-debs.tsv
         GENERATED_MANIFEST="$(mktemp)"
         trap 'rm -f "$GENERATED_MANIFEST"' EXIT
         scripts/package-manifest.sh DATA/DEB/packages > "$GENERATED_MANIFEST"

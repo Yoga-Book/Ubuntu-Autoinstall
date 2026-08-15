@@ -17,9 +17,9 @@ The production installer refuses to configure storage unless all of these checks
 * that disk exposes matching `boot0` and `boot1` devices, distinguishing it from the `ED4QT` microSD;
 * `mokutil` explicitly reports that Secure Boot is disabled.
 
-Secure Boot must remain disabled because `6.17.4-yogabook1` is unsigned. The installer selects that kernel through `GRUB_TOP_LEVEL`; Ubuntu's generic 7.0 kernel remains installed as a fallback.
+Secure Boot must remain disabled because `7.2.0-rc7-yogabook1` is unsigned. The installer selects that kernel through `GRUB_TOP_LEVEL`; Ubuntu's generic 7.0 kernel remains installed as a fallback.
 
-The cameras and the X91L LTE modem are unsupported by the upstream Yoga Book work and are not acceptance criteria. See <<known-limitations>>.
+Camera and X91L LTE support are new in this release and require physical acceptance testing. See <<known-limitations>>.
 
 == What the project installs
 
@@ -30,7 +30,7 @@ The autoinstall selects the full `ubuntu-desktop` source and configures:
 * no configured Ethernet interfaces and APT's `offline-install` fallback;
 * a direct whole-disk layout on the dynamically discovered `CJNB4R` eMMC in production;
 * the five selected Yoga Book packages plus their offline Ubuntu dependency closure;
-* `6.17.4-yogabook1` as GRUB's top-level kernel;
+* `7.2.0-rc7-yogabook1` as GRUB's top-level kernel;
 * an automatic poweroff after installation.
 
 The five selected release package identities are:
@@ -39,13 +39,13 @@ The five selected release package identities are:
 |===
 | Package | Version | Architecture
 | `alsa-ucm-conf-yogabook` | `1.4` | `all`
-| `linux-headers-6.17.4-yogabook1` | `6.17.4-00016-g704990e9da51-15` | `amd64`
-| `linux-image-6.17.4-yogabook1` | `6.17.4-00016-g704990e9da51-15` | `amd64`
+| `linux-headers-7.2.0-rc7-yogabook1` | `7.2.0~rc7-00008-g2d9688eb3b5c-12` | `amd64`
+| `linux-image-7.2.0-rc7-yogabook1` | `7.2.0~rc7-00008-g2d9688eb3b5c-12` | `amd64`
 | `touch-keyboard` | `1.4.3` | `amd64`
 | `yogabook-support` | `1.5.ubuntu1` | `all`
 |===
 
-All six files from the https://github.com/jekhor/yogabook-linux/releases/tag/debs-20251026[upstream `debs-20251026` release] are downloaded and checksum-verified. Both `yogabook-support` files are retained as verified source assets, but only the newer Ubuntu-compatible `1.5.ubuntu1` identity is selected for installation.
+The image and headers come from the https://github.com/Yoga-Book/Yoga-Book-Linux-Kernel/releases/tag/v7.2-rc7-yogabook[`v7.2-rc7-yogabook` kernel release]. The four userspace assets remain pinned to the https://github.com/jekhor/yogabook-linux/releases/tag/debs-20251026[`debs-20251026` userspace release]. All six files are downloaded from exact manifest URLs and checksum-verified. Both `yogabook-support` files are retained as verified source assets, but only the newer Ubuntu-compatible `1.5.ubuntu1` identity is selected for installation.
 
 == Default credentials
 
@@ -211,7 +211,7 @@ The required marker is:
 
 [source,text]
 ----
-YOGABOOK_VM_TEST_PASS kernel=6.17.4-yogabook1
+YOGABOOK_VM_TEST_PASS kernel=7.2.0-rc7-yogabook1
 ----
 
 It is emitted only after checking the running Yoga Book kernel, `dpkg --audit`, offline `apt-get check`, all five selected packages, and `GRUB_TOP_LEVEL`. QEMU's default firmware exercises the BIOS boot path; `iso:verify` separately verifies that the ISO also retains a UEFI boot entry and GPT metadata.
@@ -270,16 +270,16 @@ EMMC="$(for D in /sys/class/block/mmcblk[0-9]; do test -r "$D/device/name" || co
 test -n "$EMMC"
 test -b "/dev/${EMMC}boot0"
 test -b "/dev/${EMMC}boot1"
-test "$(uname -r)" = 6.17.4-yogabook1
+test "$(uname -r)" = 7.2.0-rc7-yogabook1
 sudo dpkg --audit
 sudo apt-get --no-download check
 dpkg-query -W alsa-ucm-conf-yogabook \
-  linux-headers-6.17.4-yogabook1 \
-  linux-image-6.17.4-yogabook1 \
+  linux-headers-7.2.0-rc7-yogabook1 \
+  linux-image-7.2.0-rc7-yogabook1 \
   touch-keyboard yogabook-support
 ----
 
-Manually verify touch keyboard, pen-mode switching, sound, rotation sensors, Wi-Fi, Bluetooth, suspend/resume, and reboot. The result remains *NOT RECOVERY-READY* until every required field has evidence and the overall status is updated.
+Manually verify touch keyboard, pen-mode switching, sound, rotation sensors, Wi-Fi, Bluetooth, front and rear camera streaming, LTE, GNSS, suspend/resume, and reboot. The result remains *NOT RECOVERY-READY* until every required field has evidence and the overall status is updated.
 
 == Task reference
 
@@ -395,8 +395,8 @@ link:docs/architecture.adoc[`docs/architecture.adoc`] describes the trust bounda
 [[known-limitations]]
 == Known limitations
 
-* Cameras are unsupported upstream.
-* The X91L LTE modem is unsupported upstream.
+* Camera support uses the staging AtomISP driver; successful binding and media-graph creation do not prove reliable streaming.
+* Camera, LTE, and GNSS behavior with this release remains unproven until the physical acceptance record passes.
 * The Yoga Book kernel is unsigned, so Secure Boot must be disabled.
 * VM acceptance cannot validate touch, pen mode, sound, sensors, radio hardware, suspend/resume, or the physical eMMC guard.
 * The standard VM workflow exercises BIOS boot; UEFI presence is checked structurally by `iso:verify`.

@@ -48,7 +48,7 @@ sudo mokutil --sb-state
 uname -a
 ----
 
-Expected values are `Lenovo YB1-X91L`, exactly one `CJNB4R` disk with removable flag `0` and both matching eMMC boot devices, explicit `SecureBoot disabled`, and installed kernel `6.17.4-yogabook1`. An inserted `ED4QT` microSD may use either `mmcblkN` name and must not be the installation target.
+Expected values are `Lenovo YB1-X91L`, exactly one `CJNB4R` disk with removable flag `0` and both matching eMMC boot devices, explicit `SecureBoot disabled`, and installed kernel `7.2.0-rc7-yogabook1`. An inserted `ED4QT` microSD may use either `mmcblkN` name and must not be the installation target.
 
 == Automated installation and integrity
 
@@ -61,7 +61,7 @@ Expected values are `Lenovo YB1-X91L`, exactly one `CJNB4R` disk with removable 
 | Automatic installer poweroff | NO | NOT TESTED
 | USB removed before internal boot | NO | NOT TESTED
 | Internal eMMC boot | NO | NOT TESTED
-| `uname -r` is `6.17.4-yogabook1` | NO | NOT TESTED
+| `uname -r` is `7.2.0-rc7-yogabook1` | NO | NOT TESTED
 | Generic Ubuntu 7.0 kernel remains as fallback | NO | NOT TESTED
 | `GRUB_TOP_LEVEL` selects Yoga Book kernel | NO | NOT TESTED
 | `dpkg --audit` is empty | NO | NOT TESTED
@@ -76,17 +76,17 @@ Record these command results:
 
 [source,shell]
 ----
-test "$(uname -r)" = 6.17.4-yogabook1
-test -f /boot/vmlinuz-6.17.4-yogabook1
-test -f /boot/initrd.img-6.17.4-yogabook1
+test "$(uname -r)" = 7.2.0-rc7-yogabook1
+test -f /boot/vmlinuz-7.2.0-rc7-yogabook1
+test -f /boot/initrd.img-7.2.0-rc7-yogabook1
 find /boot -maxdepth 1 -name 'vmlinuz-7.0.0-*-generic' -print
 cat /etc/default/grub.d/60-yogabook.cfg
 sudo dpkg --audit
 sudo apt-get --no-download check
 dpkg-query -W \
   alsa-ucm-conf-yogabook \
-  linux-headers-6.17.4-yogabook1 \
-  linux-image-6.17.4-yogabook1 \
+  linux-headers-7.2.0-rc7-yogabook1 \
+  linux-image-7.2.0-rc7-yogabook1 \
   touch-keyboard \
   yogabook-support
 sha256sum /var/log/installer/autoinstall-media/packages.manifest \
@@ -110,8 +110,10 @@ sha256sum /var/log/installer/autoinstall-media/packages.manifest \
 | Suspend and resume | NO | NOT TESTED
 | Reboot returns to Yoga Book kernel | NO | NOT TESTED
 | Poweroff completes | NO | NOT TESTED
-| Cameras | N/A | Unsupported upstream
-| X91L LTE modem | N/A | Unsupported upstream
+| Front-camera streaming | NO | NOT TESTED
+| Rear-camera streaming | NO | NOT TESTED
+| X91L LTE registration and data | NO | NOT TESTED
+| GNSS fix with a userspace consumer | NO | NOT TESTED
 |===
 
 For each manual check, state what was exercised and the result. A device merely appearing in a list is not sufficient evidence that the function works.
@@ -133,7 +135,7 @@ For each manual check, state what was exercised and the result. A device merely 
 
 Required failures or deviations: NOT TESTED
 
-Known upstream limitations observed: cameras and X91L LTE modem
+Known upstream limitations observed: staging AtomISP camera support; physical camera, LTE, and GNSS behavior unproven
 
 Overall status: *NOT TESTED — NOT RECOVERY-READY*
 
