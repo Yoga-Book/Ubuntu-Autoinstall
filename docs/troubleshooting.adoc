@@ -164,7 +164,7 @@ Inspect the installed-system log and marker:
 [source,shell]
 ----
 tail -n 100 DATA/VM/boot-serial.log
-grep -F 'YOGABOOK_VM_TEST_PASS kernel=7.2.0-rc7-yogabook1' DATA/VM/boot-serial.log
+grep -F 'YOGABOOK_VM_TEST_PASS kernel=7.2.0-rc7-yogabook2' DATA/VM/boot-serial.log
 ----
 
 For GUI mode, use `DATA/VM/yogabook-test-gui-boot-serial.log`. The marker proves the post-install checks ran; an installer poweroff alone is insufficient.
@@ -194,10 +194,10 @@ Collect:
 uname -r
 cat /etc/default/grub.d/60-yogabook.cfg
 ls -l /boot/vmlinuz-* /boot/initrd.img-*
-grep -F '7.2.0-rc7-yogabook1' /boot/grub/grub.cfg
+grep -F '7.2.0-rc7-yogabook2' /boot/grub/grub.cfg
 ----
 
-The expected top-level setting is `GRUB_TOP_LEVEL=/boot/vmlinuz-7.2.0-rc7-yogabook1`. Keep the generic 7.0 kernel as fallback; do not remove it while diagnosing.
+The expected top-level setting is `GRUB_TOP_LEVEL=/boot/vmlinuz-7.2.0-rc7-yogabook2`. Keep the generic 7.0 kernel as fallback; do not remove it while diagnosing.
 
 == Collecting evidence
 

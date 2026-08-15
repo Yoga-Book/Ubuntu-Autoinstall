@@ -1,5 +1,5 @@
 alsa-ucm-conf-yogabook	1.4	all
-linux-headers-7.2.0-rc7-yogabook1	7.2.0~rc7-00008-g2d9688eb3b5c-12	amd64
-linux-image-7.2.0-rc7-yogabook1	7.2.0~rc7-00008-g2d9688eb3b5c-12	amd64
+linux-headers-7.2.0-rc7-yogabook2	7.2.0~rc7-00009-gc80c6704b77e-14	amd64
+linux-image-7.2.0-rc7-yogabook2	7.2.0~rc7-00009-gc80c6704b77e-14	amd64
 touch-keyboard	1.4.3	amd64
 yogabook-support	1.5.ubuntu1	all

@@ -17,7 +17,7 @@ The production installer refuses to configure storage unless all of these checks
 * that disk exposes matching `boot0` and `boot1` devices, distinguishing it from the `ED4QT` microSD;
 * `mokutil` explicitly reports that Secure Boot is disabled.
 
-Secure Boot must remain disabled because `7.2.0-rc7-yogabook1` is unsigned. The installer selects that kernel through `GRUB_TOP_LEVEL`; Ubuntu's generic 7.0 kernel remains installed as a fallback.
+Secure Boot must remain disabled because `7.2.0-rc7-yogabook2` is unsigned. The installer selects that kernel through `GRUB_TOP_LEVEL`; Ubuntu's generic 7.0 kernel remains installed as a fallback.
 
 Camera and X91L LTE support are new in this release and require physical acceptance testing. See <<known-limitations>>.
 
@@ -30,7 +30,7 @@ The autoinstall selects the full `ubuntu-desktop` source and configures:
 * no configured Ethernet interfaces and APT's `offline-install` fallback;
 * a direct whole-disk layout on the dynamically discovered `CJNB4R` eMMC in production;
 * the five selected Yoga Book packages plus their offline Ubuntu dependency closure;
-* `7.2.0-rc7-yogabook1` as GRUB's top-level kernel;
+* `7.2.0-rc7-yogabook2` as GRUB's top-level kernel;
 * an automatic poweroff after installation.
 
 The five selected release package identities are:
@@ -39,8 +39,8 @@ The five selected release package identities are:
 |===
 | Package | Version | Architecture
 | `alsa-ucm-conf-yogabook` | `1.4` | `all`
-| `linux-headers-7.2.0-rc7-yogabook1` | `7.2.0~rc7-00008-g2d9688eb3b5c-12` | `amd64`
-| `linux-image-7.2.0-rc7-yogabook1` | `7.2.0~rc7-00008-g2d9688eb3b5c-12` | `amd64`
+| `linux-headers-7.2.0-rc7-yogabook2` | `7.2.0~rc7-00009-gc80c6704b77e-14` | `amd64`
+| `linux-image-7.2.0-rc7-yogabook2` | `7.2.0~rc7-00009-gc80c6704b77e-14` | `amd64`
 | `touch-keyboard` | `1.4.3` | `amd64`
 | `yogabook-support` | `1.5.ubuntu1` | `all`
 |===
@@ -211,7 +211,7 @@ The required marker is:
 
 [source,text]
 ----
-YOGABOOK_VM_TEST_PASS kernel=7.2.0-rc7-yogabook1
+YOGABOOK_VM_TEST_PASS kernel=7.2.0-rc7-yogabook2
 ----
 
 It is emitted only after checking the running Yoga Book kernel, `dpkg --audit`, offline `apt-get check`, all five selected packages, and `GRUB_TOP_LEVEL`. QEMU's default firmware exercises the BIOS boot path; `iso:verify` separately verifies that the ISO also retains a UEFI boot entry and GPT metadata.
@@ -270,12 +270,12 @@ EMMC="$(for D in /sys/class/block/mmcblk[0-9]; do test -r "$D/device/name" || co
 test -n "$EMMC"
 test -b "/dev/${EMMC}boot0"
 test -b "/dev/${EMMC}boot1"
-test "$(uname -r)" = 7.2.0-rc7-yogabook1
+test "$(uname -r)" = 7.2.0-rc7-yogabook2
 sudo dpkg --audit
 sudo apt-get --no-download check
 dpkg-query -W alsa-ucm-conf-yogabook \
-  linux-headers-7.2.0-rc7-yogabook1 \
-  linux-image-7.2.0-rc7-yogabook1 \
+  linux-headers-7.2.0-rc7-yogabook2 \
+  linux-image-7.2.0-rc7-yogabook2 \
   touch-keyboard yogabook-support
 ----
 

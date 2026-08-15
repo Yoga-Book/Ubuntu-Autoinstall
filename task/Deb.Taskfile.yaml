@@ -119,8 +119,8 @@ tasks:
             apt-get update
             DEBIAN_FRONTEND=noninteractive apt-get install --yes \
               alsa-ucm-conf-yogabook \
-              linux-headers-7.2.0-rc7-yogabook1 \
-              linux-image-7.2.0-rc7-yogabook1 \
+              linux-headers-7.2.0-rc7-yogabook2 \
+              linux-image-7.2.0-rc7-yogabook2 \
               touch-keyboard \
               yogabook-support
             test -z "$(dpkg --audit)"
