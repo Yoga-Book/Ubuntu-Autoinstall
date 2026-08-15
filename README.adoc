@@ -23,7 +23,7 @@ Camera and X91L LTE support are new in this release and require physical accepta
 
 == What the project installs
 
-The autoinstall selects the full `ubuntu-desktop` source and configures:
+The autoinstall selects the minimized `ubuntu-desktop-minimal` source and configures:
 
 * locale `en_US.UTF-8`, Italian keyboard layout, and timezone `Europe/Rome`;
 * no installer refresh, GeoIP lookup, online driver search, or driver installation;

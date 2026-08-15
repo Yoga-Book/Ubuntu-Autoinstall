@@ -4,7 +4,7 @@ autoinstall:
   refresh-installer:
     update: false
   source:
-    id: ubuntu-desktop
+    id: ubuntu-desktop-minimal
     search_drivers: false
   apt:
     geoip: false

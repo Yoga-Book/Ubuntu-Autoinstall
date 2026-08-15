@@ -111,9 +111,9 @@ tasks:
           echo "Error: Ubuntu desktop installer layer $LIVE_LAYER is missing." >&2
           exit 1
         }
-        grep -Eq '^[[:space:]]*id:[[:space:]]+ubuntu-desktop[[:space:]]*$' \
+        grep -Eq '^[[:space:]]*id:[[:space:]]+ubuntu-desktop-minimal[[:space:]]*$' \
           "$EXTRACT_DIR/casper/install-sources.yaml" || {
-          echo "Error: the exact ISO does not offer the requested ubuntu-desktop source." >&2
+          echo "Error: the exact ISO does not offer the requested ubuntu-desktop-minimal source." >&2
           exit 1
         }
         VALIDATION_DIR="$(mktemp -d)"
@@ -256,7 +256,7 @@ tasks:
         echo "Remastered ISO created at $OUTPUT_ISO"
       - task: verify
   verify:
-    desc: "Verify hybrid boot metadata, exact rendered data, full desktop selection, packages, and output checksum."
+    desc: "Verify hybrid boot metadata, exact rendered data, minimized desktop selection, packages, and output checksum."
     cmds:
       - |
         ISO_BASENAME="$(basename "$ISO_FILE")"
@@ -295,7 +295,8 @@ tasks:
         grep -Fxq 'default=0' "$VERIFY_DIR/grub.cfg"
         grep -Fxq 'default=0' "$VERIFY_DIR/loopback.cfg"
         cmp "$EXTRACT_DIR/md5sum.txt" "$VERIFY_DIR/md5sum.txt"
-        grep -Fq 'id: ubuntu-desktop' "$VERIFY_DIR/iso/nocloud/user-data"
+        grep -Eq '^[[:space:]]*id:[[:space:]]+ubuntu-desktop-minimal[[:space:]]*$' \
+          "$VERIFY_DIR/iso/nocloud/user-data"
         grep -Fq 'search_drivers: false' "$VERIFY_DIR/iso/nocloud/user-data"
         grep -Fq 'fallback: offline-install' "$VERIFY_DIR/iso/nocloud/user-data"
         grep -Fq 'geoip: false' "$VERIFY_DIR/iso/nocloud/user-data"
@@ -322,7 +323,7 @@ tasks:
           cd "$(dirname "$OUTPUT_ISO")"
           sha256sum --check "$(basename "$OUTPUT_ISO").sha256"
         )
-        echo "Verified Ubuntu-26.04-Yoga-Book volume label, BIOS/UEFI/GPT boot metadata, full-desktop offline autoinstall data, $PACKAGE_COUNT package(s), and the ISO SHA256"
+        echo "Verified Ubuntu-26.04-Yoga-Book volume label, BIOS/UEFI/GPT boot metadata, minimized-desktop offline autoinstall data, $PACKAGE_COUNT package(s), and the ISO SHA256"
 
   clean:
     desc: "Remove generated extraction, remaster, rendered configuration, and package work directories."

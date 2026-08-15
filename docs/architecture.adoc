@@ -117,7 +117,7 @@ The repository is marked `[trusted=yes]` because it is an unsigned local APT rep
 * GPT system-area metadata;
 * exact equality between rendered and embedded NoCloud trees;
 * exact equality between staged and embedded package trees;
-* expected full-desktop/offline settings and Yoga Book GRUB selection;
+* expected minimized-desktop/offline settings and Yoga Book GRUB selection;
 * checksum entries for GRUB, package index, manifest, and every DEB;
 * a regenerated package manifest identical to the embedded and build manifests;
 * a valid output SHA256 sidecar.
