@@ -2,11 +2,9 @@ version: "3"
 
 tasks:
   clean:
-    desc: "Remove generated Yoga Book release and dependency package directories."
+    desc: "Remove all downloaded and resolved Yoga Book DEB files and metadata."
     cmds:
-      - |
-        find DATA/DEB/upstream DATA/DEB/packages -mindepth 1 -maxdepth 1 -type f -delete 2>/dev/null || true
-        rm -f DATA/DEB/packages.manifest
+      - find DATA/DEB -type f ! -name '.gitkeep' -delete
 
   download:
     desc: "Download and verify all six pinned Yoga Book package assets."

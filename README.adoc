@@ -288,6 +288,7 @@ Run `task --list-all` for the live command list.
 [cols="2,4",options="header"]
 |===
 | Task | Purpose
+| `task clean` | Remove all downloaded and resolved files under `DATA/DEB` while preserving tracked `.gitkeep` files.
 | `task build` | Clean production build, remaster, and verification.
 | `task build-vm-test` | Clean test-only build targeting `/dev/vda`.
 | `task vm-test` | Headless NIC-less install and installed-system acceptance test.
@@ -315,7 +316,7 @@ Run `task --list-all` for the live command list.
 | `task deb:resolve` | Select five identities, resolve dependencies, and prove offline installation.
 | `task deb:verify` | Recheck source assets, package identities, manifest, and APT index.
 | `task deb:embed` | Copy the verified closure and indexes into the extracted ISO.
-| `task deb:clean` | Remove generated upstream/package files and the generated package manifest.
+| `task deb:clean` | Remove all downloaded and resolved files under `DATA/DEB` while preserving tracked `.gitkeep` files.
 | `task password-hash` / `task ph` | Generate a SHA-512 crypt hash for manual `user-data` customization.
 | `task password-check` / `task pc` | Check a password against a crypt hash.
 |===

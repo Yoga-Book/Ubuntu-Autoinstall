@@ -16,6 +16,11 @@ includes:
     taskfile: task/Deb.Taskfile.yaml
 
 tasks:
+  clean:
+    desc: "Remove all downloaded and resolved Yoga Book DEB files."
+    cmds:
+      - task: deb:clean
+
   build:
     desc: "Clean-build, validate, verify, and checksum the offline Yoga Book autoinstall ISO."
     cmds:
