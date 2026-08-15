@@ -109,7 +109,11 @@ fi
 
 grep -Fq 'sudo dd if="$iso" of="$selected_path" bs=4M status=progress conv=fsync' "$SCRIPT_DIR/burn-usb.sh" \
   || fail 'guarded dd invocation changed unexpectedly'
+grep -Fq 'dd if="$iso" bs=4M status=progress | sha256sum' "$SCRIPT_DIR/burn-usb.sh" \
+  || fail 'initial ISO checksum progress changed unexpectedly'
 grep -Fq 'sudo head --bytes "$iso_size" "$selected_path"' "$SCRIPT_DIR/burn-usb.sh" \
   || fail 'bounded read-back verification changed unexpectedly'
+grep -Fq '| dd bs=4M status=progress' "$SCRIPT_DIR/burn-usb.sh" \
+  || fail 'read-back checksum progress changed unexpectedly'
 
 printf 'Verified USB discovery, safe auto-unmounting, ISO checks, raw write policy, and read-back policy.\n'

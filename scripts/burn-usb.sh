@@ -49,7 +49,9 @@ validate_production_iso() {
   sidecar_name="${sidecar_name#\*}"
   [[ "$expected" =~ ^[0-9a-fA-F]{64}$ && "$sidecar_name" == "$(basename "$iso")" ]] \
     || die "ISO checksum sidecar does not name $(basename "$iso"): $sidecar"
-  actual="$(sha256sum "$iso" | awk '{print $1}')"
+  printf 'Verifying production ISO checksum: %s (%s) ...\n' \
+    "$iso" "$(human_size "$(stat --format=%s "$iso")")" >&2
+  actual="$(dd if="$iso" bs=4M status=progress | sha256sum | awk '{print $1}')"
   [[ "${actual,,}" == "${expected,,}" ]] \
     || die "ISO checksum mismatch: expected ${expected,,}, calculated ${actual,,}"
 
@@ -254,7 +256,10 @@ main() {
     || die "USB flush failed; the device may contain a partial or invalid image"
 
   printf 'Reading back and verifying %s ...\n' "$(human_size "$iso_size")"
-  actual_digest="$(sudo head --bytes "$iso_size" "$selected_path" | sha256sum | awk '{print $1}')" \
+  actual_digest="$(sudo head --bytes "$iso_size" "$selected_path" \
+    | dd bs=4M status=progress \
+    | sha256sum \
+    | awk '{print $1}')" \
     || die "USB read-back failed; the device may contain a partial or invalid image"
   [[ "$actual_digest" == "$expected_digest" ]] \
     || die "USB read-back checksum mismatch; expected $expected_digest, read $actual_digest"
