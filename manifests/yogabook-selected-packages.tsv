@@ -7,8 +7,8 @@ yogabook-sensors	1.0.0-7	all
 yogabook-camera	0.2.20	all
 yogabook-gnss	1.0.3	all
 yogabook-validator	0.23.2	all
-gnome-control-center	50.3-0ubuntu0.1+yogabook1	amd64
-gnome-control-center-data	50.3-0ubuntu0.1+yogabook1	all
+gnome-control-center	1:50.3-0ubuntu0.1+yogabook1	amd64
+gnome-control-center-data	1:50.3-0ubuntu0.1+yogabook1	all
 gir1.2-mutter-18	50.1-0ubuntu2.2+yogabook3	amd64
 libmutter-18-0	50.1-0ubuntu2.2+yogabook3	amd64
 mutter-common	50.1-0ubuntu2.2+yogabook3	all
