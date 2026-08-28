@@ -82,7 +82,7 @@ tasks:
   rm-extract:
     desc: "Remove extracted ISO directories except .gitkeep"
     cmds:
-      - find DATA/ISO/extracted -mindepth 1 ! -name '.gitkeep' -exec rm -rf {} +
+      - find DATA/ISO/extracted -mindepth 1 -maxdepth 1 ! -name '.gitkeep' -exec rm -rf -- {} +
   patch:
     desc: "Render and validate autoinstall data, then patch it and the offline packages into the ISO tree."
     cmds:
@@ -351,4 +351,4 @@ tasks:
   rm-remaster:
     desc: "Remove remastered ISO files except .gitkeep"
     cmds:
-      - find DATA/ISO/remastered -mindepth 1 ! -name '.gitkeep' -exec rm -f {} +
+      - find DATA/ISO/remastered -mindepth 1 -maxdepth 1 ! -name '.gitkeep' -exec rm -f -- {} +
