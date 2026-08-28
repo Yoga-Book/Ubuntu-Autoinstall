@@ -1,7 +1,7 @@
 #!/bin/sh
 set -u
 
-KERNEL=7.2.0-rc7-yogabook2
+KERNEL=7.2.0-yogabook-20260828-163827
 STATE_DIR=/var/lib/yogabook-graphical-health
 LOG_DIR=/var/log/yogabook-graphical-health
 LOG_FILE=$LOG_DIR/boot.log

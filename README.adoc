@@ -17,7 +17,7 @@ The production installer refuses to configure storage unless all of these checks
 * that disk exposes matching `boot0` and `boot1` devices, distinguishing it from the `ED4QT` microSD;
 * `mokutil` explicitly reports that Secure Boot is disabled.
 
-Secure Boot must remain disabled because `7.2.0-rc7-yogabook2` is unsigned. The installer selects that kernel through `GRUB_TOP_LEVEL`; Ubuntu's generic 7.0 kernel remains installed as a fallback.
+Secure Boot must remain disabled because `7.2.0-yogabook-20260828-163827` is unsigned. The installer selects that kernel through `GRUB_TOP_LEVEL`; Ubuntu's generic 7.0 kernel remains installed as a fallback.
 
 Camera and X91L LTE support are new in this release and require physical acceptance testing. See <<known-limitations>>.
 
@@ -29,24 +29,34 @@ The autoinstall selects the minimized `ubuntu-desktop-minimal` source and config
 * no installer refresh, GeoIP lookup, online driver search, or driver installation;
 * no configured Ethernet interfaces and APT's `offline-install` fallback;
 * a direct whole-disk layout on the dynamically discovered `CJNB4R` eMMC in production;
-* the five selected Yoga Book packages plus their offline Ubuntu dependency closure;
-* `7.2.0-rc7-yogabook2` as GRUB's top-level kernel;
+* the 15 selected Yoga Book packages plus their offline Ubuntu dependency closure;
+* `7.2.0-yogabook-20260828-163827` as GRUB's top-level kernel;
 * a production-only graphical health check, persistent boot diagnostics, and one-shot generic-kernel fallback;
 * an automatic poweroff after installation.
 
-The five selected release package identities are:
+The 15 selected release package identities are:
 
 [cols="2,2,1",options="header"]
 |===
 | Package | Version | Architecture
-| `alsa-ucm-conf-yogabook` | `1.4` | `all`
-| `linux-headers-7.2.0-rc7-yogabook2` | `7.2.0~rc7-00009-gc80c6704b77e-14` | `amd64`
-| `linux-image-7.2.0-rc7-yogabook2` | `7.2.0~rc7-00009-gc80c6704b77e-14` | `amd64`
-| `touch-keyboard` | `1.4.8` | `amd64`
-| `yogabook-support` | `1.6.1` | `all`
+| `alsa-ucm-conf-yogabook` | `1.6` | `all`
+| `linux-headers-7.2.0-yogabook-20260828-163827` | `7.2.0-14780-g907805589733-1` | `amd64`
+| `linux-image-7.2.0-yogabook-20260828-163827` | `7.2.0-14780-g907805589733-1` | `amd64`
+| `sof-topology-yogabook` | `1.0.0` | `all`
+| `halo-keyboard` | `1.0.0-6` | `amd64`
+| `yogabook-sensors` | `1.0.0-7` | `all`
+| `yogabook-camera` | `0.2.20` | `all`
+| `yogabook-gnss` | `1.0.3` | `all`
+| `yogabook-validator` | `0.23.2` | `all`
+| `gnome-control-center` | `50.3-0ubuntu0.1+yogabook1` | `amd64`
+| `gnome-control-center-data` | `50.3-0ubuntu0.1+yogabook1` | `all`
+| `gir1.2-mutter-18` | `50.1-0ubuntu2.2+yogabook3` | `amd64`
+| `libmutter-18-0` | `50.1-0ubuntu2.2+yogabook3` | `amd64`
+| `mutter-common` | `50.1-0ubuntu2.2+yogabook3` | `all`
+| `mutter-common-bin` | `50.1-0ubuntu2.2+yogabook3` | `amd64`
 |===
 
-The image and headers come from the https://github.com/Yoga-Book/Yoga-Book-Linux-Kernel/releases/tag/v7.2-rc7-yogabook[`v7.2-rc7-yogabook` kernel release]. The three userspace packages are the Resolute builds from the https://packages.ulbricht.casa/linux-yogabook/-/packages[current Yoga Book package repository] linked by upstream. That repository explicitly supports Ubuntu 26.04. All five files are downloaded from exact manifest URLs and SHA256-verified.
+The image and headers come from the https://github.com/Yoga-Book/Yoga-Book-Linux-Kernel/releases/tag/v7.2.0-yogabook-20260828-163827[`v7.2.0-yogabook-20260828-163827` kernel release]. All userspace packages come from public, versioned releases in the https://github.com/Yoga-Book[Yoga-Book GitHub organization]. All 15 files are downloaded from exact manifest URLs and SHA256-verified.
 
 == Default credentials
 
@@ -119,8 +129,8 @@ task build
 
 . remove generated extraction, remaster, render, and package work files;
 . download and SHA256-check the Ubuntu ISO;
-. download and verify all five pinned Yoga Book release assets;
-. select five package identities and resolve a clean dependency closure;
+. download and verify all 15 pinned Yoga Book release assets;
+. select 15 package identities and resolve a clean dependency closure;
 . install the closure in a network-disabled Ubuntu 26.04 container;
 . extract the source ISO;
 . render and validate production NoCloud data;
@@ -213,10 +223,10 @@ The required marker is:
 
 [source,text]
 ----
-YOGABOOK_VM_TEST_PASS kernel=7.2.0-rc7-yogabook2
+YOGABOOK_VM_TEST_PASS kernel=7.2.0-yogabook-20260828-163827
 ----
 
-It is emitted only after checking the running Yoga Book kernel, the installed `ubuntu-desktop-minimal` profile, absence of the full `ubuntu-desktop` profile, `dpkg --audit`, offline `apt-get check`, all five selected packages, and `GRUB_TOP_LEVEL`. QEMU's default firmware exercises the BIOS boot path; `iso:verify` separately verifies that the ISO also retains a UEFI boot entry and GPT metadata.
+It is emitted only after checking the running Yoga Book kernel, the installed `ubuntu-desktop-minimal` profile, absence of the full `ubuntu-desktop` profile, `dpkg --audit`, offline `apt-get check`, all 15 selected packages, and `GRUB_TOP_LEVEL`. QEMU's default firmware exercises the BIOS boot path; `iso:verify` separately verifies that the ISO also retains a UEFI boot entry and GPT metadata.
 
 === Graphical test
 
@@ -273,13 +283,16 @@ EMMC="$(for D in /sys/class/block/mmcblk[0-9]; do test -r "$D/device/name" || co
 test -n "$EMMC"
 test -b "/dev/${EMMC}boot0"
 test -b "/dev/${EMMC}boot1"
-test "$(uname -r)" = 7.2.0-rc7-yogabook2
+test "$(uname -r)" = 7.2.0-yogabook-20260828-163827
 sudo dpkg --audit
 sudo apt-get --no-download check
 dpkg-query -W alsa-ucm-conf-yogabook \
-  linux-headers-7.2.0-rc7-yogabook2 \
-  linux-image-7.2.0-rc7-yogabook2 \
-  touch-keyboard yogabook-support
+  linux-headers-7.2.0-yogabook-20260828-163827 \
+  linux-image-7.2.0-yogabook-20260828-163827 \
+  sof-topology-yogabook halo-keyboard yogabook-sensors \
+  yogabook-camera yogabook-gnss yogabook-validator \
+  gnome-control-center gnome-control-center-data \
+  gir1.2-mutter-18 libmutter-18-0 mutter-common mutter-common-bin
 sudo systemctl status yogabook-graphical-health.service --no-pager
 sudo cat /var/log/yogabook-graphical-health/boot.log
 ----
@@ -317,8 +330,8 @@ Run `task --list-all` for the live command list.
 | `task iso:clean` | Remove generated extraction, remaster, render, and package work files; retain the downloaded official ISO.
 | `task iso:rm-extract` | Remove extracted ISO trees while retaining `.gitkeep`.
 | `task iso:rm-remaster` | Remove remastered ISO files and sidecars while retaining `.gitkeep`.
-| `task deb:download` | Download and verify all five pinned upstream package files.
-| `task deb:resolve` | Select five identities, resolve dependencies, and prove offline installation.
+| `task deb:download` | Download and verify all 15 pinned upstream package files.
+| `task deb:resolve` | Select 15 identities, resolve dependencies, and prove offline installation.
 | `task deb:verify` | Recheck source assets, package identities, manifest, and APT index.
 | `task deb:embed` | Copy the verified closure and indexes into the extracted ISO.
 | `task deb:clean` | Remove all downloaded and resolved files under `DATA/DEB` while preserving tracked `.gitkeep` files.
@@ -401,8 +414,8 @@ link:docs/architecture.adoc[`docs/architecture.adoc`] describes the trust bounda
 [[known-limitations]]
 == Known limitations
 
-* Camera support uses the staging AtomISP driver; successful binding and media-graph creation do not prove reliable streaming.
-* Camera, LTE, and GNSS behavior with this release remains unproven until the physical acceptance record passes.
+* Camera support uses the staging AtomISP driver. The packaged cameras passed direct tablet streaming tests, but a newly installed ISO still requires physical acceptance.
+* LTE and GNSS passed on the current tablet installation; they remain unproven for this installer image until the physical acceptance record passes.
 * The Yoga Book kernel is unsigned, so Secure Boot must be disabled.
 * VM acceptance cannot validate touch, pen mode, sound, sensors, radio hardware, suspend/resume, or the physical eMMC guard.
 * The standard VM workflow exercises BIOS boot; UEFI presence is checked structurally by `iso:verify`.

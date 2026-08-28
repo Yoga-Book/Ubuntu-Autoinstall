@@ -48,7 +48,7 @@ sudo mokutil --sb-state
 uname -a
 ----
 
-Expected values are `Lenovo YB1-X91L`, exactly one `CJNB4R` disk with removable flag `0` and both matching eMMC boot devices, explicit `SecureBoot disabled`, and installed kernel `7.2.0-rc7-yogabook2`. An inserted `ED4QT` microSD may use either `mmcblkN` name and must not be the installation target.
+Expected values are `Lenovo YB1-X91L`, exactly one `CJNB4R` disk with removable flag `0` and both matching eMMC boot devices, explicit `SecureBoot disabled`, and installed kernel `7.2.0-yogabook-20260828-163827`. An inserted `ED4QT` microSD may use either `mmcblkN` name and must not be the installation target.
 
 == Automated installation and integrity
 
@@ -61,7 +61,7 @@ Expected values are `Lenovo YB1-X91L`, exactly one `CJNB4R` disk with removable 
 | Automatic installer poweroff | NO | NOT TESTED
 | USB removed before internal boot | NO | NOT TESTED
 | Internal eMMC boot | NO | NOT TESTED
-| `uname -r` is `7.2.0-rc7-yogabook2` | NO | NOT TESTED
+| `uname -r` is `7.2.0-yogabook-20260828-163827` | NO | NOT TESTED
 | Generic Ubuntu 7.0 kernel remains as fallback | NO | NOT TESTED
 | `GRUB_TOP_LEVEL` selects Yoga Book kernel | NO | NOT TESTED
 | DSI connector is connected and enabled | NO | NOT TESTED
@@ -69,7 +69,7 @@ Expected values are `Lenovo YB1-X91L`, exactly one `CJNB4R` disk with removable 
 | Automatic generic-kernel fallback was not needed, or its result is recorded | NO | NOT TESTED
 | `dpkg --audit` is empty | NO | NOT TESTED
 | Offline `apt-get check` passes | NO | NOT TESTED
-| Five selected Yoga Book packages installed | NO | NOT TESTED
+| Fifteen selected Yoga Book packages installed | NO | NOT TESTED
 | Embedded package manifest archived | NO | NOT TESTED
 | Installer logs archived | NO | NOT TESTED
 | Default password changed | NO | NOT TESTED
@@ -79,9 +79,9 @@ Record these command results:
 
 [source,shell]
 ----
-test "$(uname -r)" = 7.2.0-rc7-yogabook2
-test -f /boot/vmlinuz-7.2.0-rc7-yogabook2
-test -f /boot/initrd.img-7.2.0-rc7-yogabook2
+test "$(uname -r)" = 7.2.0-yogabook-20260828-163827
+test -f /boot/vmlinuz-7.2.0-yogabook-20260828-163827
+test -f /boot/initrd.img-7.2.0-yogabook-20260828-163827
 find /boot -maxdepth 1 -name 'vmlinuz-7.0.0-*-generic' -print
 cat /etc/default/grub.d/60-yogabook.cfg
 systemctl status gdm yogabook-graphical-health --no-pager
@@ -92,10 +92,12 @@ sudo dpkg --audit
 sudo apt-get --no-download check
 dpkg-query -W \
   alsa-ucm-conf-yogabook \
-  linux-headers-7.2.0-rc7-yogabook2 \
-  linux-image-7.2.0-rc7-yogabook2 \
-  touch-keyboard \
-  yogabook-support
+  linux-headers-7.2.0-yogabook-20260828-163827 \
+  linux-image-7.2.0-yogabook-20260828-163827 \
+  sof-topology-yogabook halo-keyboard yogabook-sensors \
+  yogabook-camera yogabook-gnss yogabook-validator \
+  gnome-control-center gnome-control-center-data \
+  gir1.2-mutter-18 libmutter-18-0 mutter-common mutter-common-bin
 sha256sum /var/log/installer/autoinstall-media/packages.manifest \
   /var/log/installer/autoinstall-media/user-data
 ----
@@ -142,7 +144,7 @@ For each manual check, state what was exercised and the result. A device merely 
 
 Required failures or deviations: NOT TESTED
 
-Known upstream limitations observed: staging AtomISP camera support; physical camera, LTE, and GNSS behavior unproven
+Known upstream limitations observed: staging AtomISP camera support; physical post-install acceptance remains required
 
 Overall status: *NOT TESTED — NOT RECOVERY-READY*
 

@@ -8,8 +8,8 @@ This document explains how the repository turns pinned upstream inputs into a ca
 
 The pipeline separates five kinds of evidence:
 
-. *Pinned source evidence*: `manifests/yogabook-release-debs.tsv` records the filename, hash, and exact source URL for three Ubuntu 26.04 userspace packages and two kernel assets from `v7.2-rc7-yogabook`.
-. *Selection evidence*: `manifests/yogabook-selected-packages.tsv` declares the five package identities that must be installed.
+. *Pinned source evidence*: `manifests/yogabook-release-debs.tsv` records the filename, hash, and exact public Yoga-Book GitHub release URL for 13 Ubuntu 26.04 userspace packages and two kernel assets.
+. *Selection evidence*: `manifests/yogabook-selected-packages.tsv` declares the 15 package identities that must be installed.
 . *Closure evidence*: `DATA/DEB/packages.manifest` records package name, version, architecture, filename, and SHA256 for every generated dependency package.
 . *Image evidence*: the output `.sha256` sidecar and `iso:verify` prove boot metadata and exact embedded files.
 . *Runtime evidence*: VM logs prove unattended offline installation and first boot; the hardware acceptance record proves device behavior.
@@ -26,8 +26,8 @@ No single layer substitutes for another. For example, a valid ISO checksum does 
 | `task/Deb.Taskfile.yaml` | Source-package download, selection, dependency resolution, offline proof, manifests, and embedding.
 | `task/ISO.Taskfile.yaml` | Source ISO download, extraction, schema validation, patching, remastering, verification, and cleanup.
 | `.example.env` | Supported source-ISO configuration example.
-| `manifests/yogabook-release-debs.tsv` | Five pinned upstream filenames, digests, and source URLs.
-| `manifests/yogabook-selected-packages.tsv` | Five required package identities.
+| `manifests/yogabook-release-debs.tsv` | Fifteen pinned upstream filenames, digests, and source URLs.
+| `manifests/yogabook-selected-packages.tsv` | Fifteen required package identities.
 | `nocloud/user-data` | Production autoinstall, identity, storage, offline package installation, kernel selection, and shutdown.
 | `nocloud/meta-data` | NoCloud instance ID and local hostname.
 | `nocloud/verify-target.sh` | Destructive-storage guard for production and restricted disk guard for tests.
@@ -94,13 +94,13 @@ VM-only GRUB patching adds an installer serial console. VM-only late commands re
 
 == Offline package design
 
-`deb:download` always starts from an empty upstream directory and verifies exactly five pinned files from their manifest URLs. `deb:resolve` then:
+`deb:download` always starts from an empty upstream directory and verifies exactly 15 pinned files from their manifest URLs. `deb:resolve` then:
 
 . selects exactly one file for each identity in `yogabook-selected-packages.tsv`;
 . runs an online Ubuntu 26.04 container to download dependencies;
 . generates a tab-separated manifest and an APT `Packages` index;
 . runs a second Ubuntu 26.04 container with `--network none`;
-. installs all five selected packages from the file repository;
+. installs all 15 selected packages from the file repository;
 . requires clean `dpkg --audit` and `apt-get --no-download check` results.
 
 The target installer recreates that trusted file repository under `/opt/yoga-book-debs`, installs the named packages, verifies the kernel and initramfs, verifies that a generic 7.0 kernel remains, regenerates GRUB, and removes the temporary repository.
@@ -143,8 +143,8 @@ Changing Ubuntu releases is not only an `.env` edit. Update and verify:
 
 Update together:
 
-* all five filenames, digests, and source URLs in `yogabook-release-debs.tsv`;
-* all five identities in `yogabook-selected-packages.tsv`;
+* all 15 filenames, digests, and source URLs in `yogabook-release-debs.tsv`;
+* all 15 identities in `yogabook-selected-packages.tsv`;
 * named packages and kernel/initramfs checks in `nocloud/user-data`;
 * `GRUB_TOP_LEVEL` and generic fallback checks;
 * `nocloud/vm-verify.sh` and its success marker;

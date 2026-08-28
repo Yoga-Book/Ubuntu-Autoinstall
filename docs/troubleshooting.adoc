@@ -164,7 +164,7 @@ Inspect the installed-system log and marker:
 [source,shell]
 ----
 tail -n 100 DATA/VM/boot-serial.log
-grep -F 'YOGABOOK_VM_TEST_PASS kernel=7.2.0-rc7-yogabook2' DATA/VM/boot-serial.log
+grep -F 'YOGABOOK_VM_TEST_PASS kernel=7.2.0-yogabook-20260828-163827' DATA/VM/boot-serial.log
 ----
 
 For GUI mode, use `DATA/VM/yogabook-test-gui-boot-serial.log`. The marker proves the post-install checks ran; an installer poweroff alone is insufficient.
@@ -187,7 +187,7 @@ If `mokutil` is unavailable or cannot determine state, the guard intentionally f
 
 == GDM starts but the boot console remains visible
 
-`Started gdm.service` proves that systemd launched the display manager; it does not prove that GNOME's Wayland greeter acquired the DSI display. The Yoga Book support and touch-keyboard daemons do not start GDM and do not implement the DRM/KMS display path. On Ubuntu 26.04's minimized desktop, a connected/enabled DRM DSI connector and a running `gnome-shell` are required for the greeter.
+`Started gdm.service` proves that systemd launched the display manager; it does not prove that GNOME's Wayland greeter acquired the DSI display. The Halo keyboard, sensor, camera and GNSS services do not start GDM and do not implement the DRM/KMS display path. On Ubuntu 26.04's minimized desktop, a connected/enabled DRM DSI connector and a running `gnome-shell` are required for the greeter.
 
 The production image waits two minutes after cloud-init and GDM. If graphical health still fails on the custom kernel, it captures evidence and selects the preserved generic Ubuntu kernel once. After the reboot, collect:
 
@@ -205,7 +205,7 @@ sudo journalctl -b -u gdm --no-pager
 sudo journalctl -b -k --no-pager | grep -Ei 'drm|i915|dsi|panel|firmware|error|fail'
 ----
 
-If the generic kernel reaches GNOME and the custom kernel does not, the failure is kernel/i915/DSI-specific. If both kernels expose a healthy connector but `gnome-shell` fails, inspect the GDM journal for a userspace/Mutter failure. To retry the custom kernel manually, restore `GRUB_TOP_LEVEL=/boot/vmlinuz-7.2.0-rc7-yogabook2`, run `sudo update-grub`, and choose it from the visible GRUB menu. Do not delete the fallback stamp until its saved evidence has been copied.
+If the generic kernel reaches GNOME and the custom kernel does not, the failure is kernel/i915/DSI-specific. If both kernels expose a healthy connector but `gnome-shell` fails, inspect the GDM journal for a userspace/Mutter failure. To retry the custom kernel manually, restore `GRUB_TOP_LEVEL=/boot/vmlinuz-7.2.0-yogabook-20260828-163827`, run `sudo update-grub`, and choose it from the visible GRUB menu. Do not delete the fallback stamp until its saved evidence has been copied.
 
 == Installed system boots the wrong kernel
 
@@ -216,10 +216,10 @@ Collect:
 uname -r
 cat /etc/default/grub.d/60-yogabook.cfg
 ls -l /boot/vmlinuz-* /boot/initrd.img-*
-grep -F '7.2.0-rc7-yogabook2' /boot/grub/grub.cfg
+grep -F '7.2.0-yogabook-20260828-163827' /boot/grub/grub.cfg
 ----
 
-The expected top-level setting is `GRUB_TOP_LEVEL=/boot/vmlinuz-7.2.0-rc7-yogabook2`. Keep the generic 7.0 kernel as fallback; do not remove it while diagnosing.
+The expected top-level setting is `GRUB_TOP_LEVEL=/boot/vmlinuz-7.2.0-yogabook-20260828-163827`. Keep the generic 7.0 kernel as fallback; do not remove it while diagnosing.
 
 == Collecting evidence
 

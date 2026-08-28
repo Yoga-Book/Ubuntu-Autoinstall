@@ -7,13 +7,13 @@ tasks:
       - find DATA/DEB -type f ! -name '.gitkeep' -delete
 
   download:
-    desc: "Download and verify all five pinned Yoga Book package assets."
+    desc: "Download and verify all 15 pinned Yoga Book package assets."
     cmds:
       - |
         MANIFEST=manifests/yogabook-release-debs.tsv
         UPSTREAM_DIR=DATA/DEB/upstream
-        [ "$(wc -l < "$MANIFEST")" -eq 5 ] || {
-          echo "Error: $MANIFEST must pin exactly five release assets." >&2
+        [ "$(wc -l < "$MANIFEST")" -eq 15 ] || {
+          echo "Error: $MANIFEST must pin exactly 15 release assets." >&2
           exit 1
         }
         mkdir -p "$UPSTREAM_DIR"
@@ -34,11 +34,11 @@ tasks:
           fi
           printf '%s  %s\n' "$EXPECTED_SHA256" "$DESTINATION" | sha256sum --check
         done < "$MANIFEST"
-        [ "$(find "$UPSTREAM_DIR" -maxdepth 1 -type f -name '*.deb' | wc -l)" -eq 5 ] || {
-          echo "Error: expected exactly five downloaded release assets." >&2
+        [ "$(find "$UPSTREAM_DIR" -maxdepth 1 -type f -name '*.deb' | wc -l)" -eq 15 ] || {
+          echo "Error: expected exactly 15 downloaded release assets." >&2
           exit 1
         }
-        echo "Downloaded and verified all five pinned Yoga Book package assets"
+        echo "Downloaded and verified all 15 pinned Yoga Book package assets"
 
   resolve:
     desc: "Build and network-disable-verify a clean Ubuntu 26.04 offline dependency closure."
@@ -51,8 +51,8 @@ tasks:
         UPSTREAM_DIR="$PWD/DATA/DEB/upstream"
         PACKAGE_DIR="$PWD/DATA/DEB/packages"
         SELECTED_MANIFEST="$PWD/manifests/yogabook-selected-packages.tsv"
-        [ "$(find "$UPSTREAM_DIR" -maxdepth 1 -type f -name '*.deb' 2>/dev/null | wc -l)" -eq 5 ] || {
-          echo "Error: all five upstream assets are required; run task deb:download." >&2
+        [ "$(find "$UPSTREAM_DIR" -maxdepth 1 -type f -name '*.deb' 2>/dev/null | wc -l)" -eq 15 ] || {
+          echo "Error: all 15 upstream assets are required; run task deb:download." >&2
           exit 1
         }
         mkdir -p "$PACKAGE_DIR"
@@ -76,8 +76,8 @@ tasks:
             exit 1
           }
         done < "$SELECTED_MANIFEST"
-        [ "$(find "$PACKAGE_DIR" -maxdepth 1 -type f -name '*.deb' | wc -l)" -eq 5 ] || {
-          echo "Error: selected release set must contain exactly five distinct packages." >&2
+        [ "$(find "$PACKAGE_DIR" -maxdepth 1 -type f -name '*.deb' | wc -l)" -eq 15 ] || {
+          echo "Error: selected release set must contain exactly 15 distinct packages." >&2
           exit 1
         }
 
@@ -119,10 +119,20 @@ tasks:
             apt-get update
             DEBIAN_FRONTEND=noninteractive apt-get install --yes \
               alsa-ucm-conf-yogabook \
-              linux-headers-7.2.0-rc7-yogabook2 \
-              linux-image-7.2.0-rc7-yogabook2 \
-              touch-keyboard \
-              yogabook-support
+              linux-headers-7.2.0-yogabook-20260828-163827 \
+              linux-image-7.2.0-yogabook-20260828-163827 \
+              sof-topology-yogabook \
+              halo-keyboard \
+              yogabook-sensors \
+              yogabook-camera \
+              yogabook-gnss \
+              yogabook-validator \
+              gnome-control-center \
+              gnome-control-center-data \
+              gir1.2-mutter-18 \
+              libmutter-18-0 \
+              mutter-common \
+              mutter-common-bin
             test -z "$(dpkg --audit)"
             apt-get --no-download check
           '
@@ -148,7 +158,7 @@ tasks:
             '$1 == package && $2 == version && $3 == arch { found++ } END { exit found == 1 ? 0 : 1 }' \
             "$GENERATED_MANIFEST"
         done < manifests/yogabook-selected-packages.tsv
-        echo "Verified five pinned assets, five selected package identities, and the complete dependency manifest"
+        echo "Verified 15 pinned assets, 15 selected package identities, and the complete dependency manifest"
 
   embed:
     desc: "Embed the clean, manifest-verified offline package closure into the extracted ISO."
