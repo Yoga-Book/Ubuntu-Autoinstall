@@ -3,8 +3,8 @@ linux-headers-7.2.0-yogabook-20260828-163827	7.2.0-14780-g907805589733-1	amd64
 linux-image-7.2.0-yogabook-20260828-163827	7.2.0-14780-g907805589733-1	amd64
 sof-topology-yogabook	1.0.0	all
 halo-keyboard	1.0.0-6	amd64
-yogabook-sensors	1.0.0-7	all
-yogabook-camera	0.2.20	all
+yogabook-sensors	1.0.0-8	all
+yogabook-camera	0.2.21	all
 yogabook-gnss	1.0.3	all
 yogabook-validator	0.23.2	all
 gnome-control-center	1:50.3-0ubuntu0.1+yogabook1	amd64
