@@ -4,8 +4,8 @@ dotenv:
   - .env
 
 env:
-  ISO_URL: '{{default "https://releases.ubuntu.com/26.04/ubuntu-26.04-desktop-amd64.iso" .ISO_URL}}'
-  ISO_FILE: '{{default "DATA/ISO/official/ubuntu-26.04-desktop-amd64.iso" .ISO_FILE}}'
+  ISO_URL: '{{default "https://releases.ubuntu.com/26.04/ubuntu-26.04.1-desktop-amd64.iso" .ISO_URL}}'
+  ISO_FILE: '{{default "DATA/ISO/official/ubuntu-26.04.1-desktop-amd64.iso" .ISO_FILE}}'
 
 includes:
   setup:
