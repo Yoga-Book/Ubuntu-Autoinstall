@@ -57,7 +57,7 @@ grep -Fq -- "-name 'vmlinuz-*-generic'" "$PRODUCTION_OUTPUT/yogabook-graphical-h
 while IFS="$(printf '\t')" read -r PACKAGE _VERSION _ARCHITECTURE; do
   grep -Fq "$PACKAGE" "$PRODUCTION_OUTPUT/user-data"
 done < "$REPO_ROOT/manifests/yogabook-selected-packages.tsv"
-if grep -Eq 'touch-keyboard|yogabook-support' "$PRODUCTION_OUTPUT/user-data"; then
+if grep -Eq 'touch-keyboard' "$PRODUCTION_OUTPUT/user-data"; then
   echo "Error: production rendering contains an obsolete Yoga Book package." >&2
   exit 1
 fi

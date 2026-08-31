@@ -2,7 +2,7 @@
 set -eu
 
 exec > /var/log/yogabook-vm-verify.log 2>&1
-test "$(uname -r)" = 7.2.0-yogabook-20260828-163827
+test "$(uname -r)" = 7.2.0-yogabook-20260831-153058
 test -z "$(dpkg --audit)"
 apt-get --no-download check
 test "$(dpkg-query -W -f='${Status}' ubuntu-desktop-minimal)" = "install ok installed"
@@ -13,8 +13,8 @@ if dpkg-query -W -f='${Status}\n' ubuntu-desktop 2>/dev/null \
 fi
 dpkg-query -W \
   alsa-ucm-conf-yogabook \
-  linux-headers-7.2.0-yogabook-20260828-163827 \
-  linux-image-7.2.0-yogabook-20260828-163827 \
+  linux-headers-7.2.0-yogabook-20260831-153058 \
+  linux-image-7.2.0-yogabook-20260831-153058 \
   sof-topology-yogabook \
   halo-keyboard \
   yogabook-sensors \
@@ -27,6 +27,6 @@ dpkg-query -W \
   libmutter-18-0 \
   mutter-common \
   mutter-common-bin
-grep -Fxq 'GRUB_TOP_LEVEL=/boot/vmlinuz-7.2.0-yogabook-20260828-163827' /etc/default/grub.d/60-yogabook.cfg
+grep -Fxq 'GRUB_TOP_LEVEL=/boot/vmlinuz-7.2.0-yogabook-20260831-153058' /etc/default/grub.d/60-yogabook.cfg
 printf 'YOGABOOK_VM_TEST_PASS kernel=%s\n' "$(uname -r)" | tee /dev/ttyS0
 systemctl poweroff

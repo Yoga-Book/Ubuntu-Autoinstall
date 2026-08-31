@@ -17,7 +17,7 @@ The production installer refuses to configure storage unless all of these checks
 * that disk exposes matching `boot0` and `boot1` devices, distinguishing it from the `ED4QT` microSD;
 * `mokutil` explicitly reports that Secure Boot is disabled.
 
-Secure Boot must remain disabled because `7.2.0-yogabook-20260828-163827` is unsigned. The installer selects that kernel through `GRUB_TOP_LEVEL`; Ubuntu's generic 7.0 kernel remains installed as a fallback.
+Secure Boot must remain disabled because `7.2.0-yogabook-20260831-153058` is unsigned. The installer selects that kernel through `GRUB_TOP_LEVEL`; Ubuntu's generic 7.0 kernel remains installed as a fallback.
 
 Camera and X91L LTE support are new in this release and require physical acceptance testing. See <<known-limitations>>.
 
@@ -30,7 +30,7 @@ The autoinstall selects the minimized `ubuntu-desktop-minimal` source and config
 * no configured Ethernet interfaces and APT's `offline-install` fallback;
 * a direct whole-disk layout on the dynamically discovered `CJNB4R` eMMC in production;
 * the 15 selected Yoga Book packages plus their offline Ubuntu dependency closure;
-* `7.2.0-yogabook-20260828-163827` as GRUB's top-level kernel;
+* `7.2.0-yogabook-20260831-153058` as GRUB's top-level kernel;
 * a production-only graphical health check, persistent boot diagnostics, and one-shot generic-kernel fallback;
 * an automatic poweroff after installation.
 
@@ -40,23 +40,23 @@ The 15 selected release package identities are:
 |===
 | Package | Version | Architecture
 | `alsa-ucm-conf-yogabook` | `1.6` | `all`
-| `linux-headers-7.2.0-yogabook-20260828-163827` | `7.2.0-14780-g907805589733-1` | `amd64`
-| `linux-image-7.2.0-yogabook-20260828-163827` | `7.2.0-14780-g907805589733-1` | `amd64`
-| `sof-topology-yogabook` | `1.0.0` | `all`
-| `halo-keyboard` | `1.0.0-6` | `amd64`
-| `yogabook-sensors` | `1.0.0-8` | `all`
-| `yogabook-camera` | `0.2.21` | `all`
-| `yogabook-gnss` | `1.0.3` | `all`
-| `yogabook-validator` | `0.23.2` | `all`
+| `linux-headers-7.2.0-yogabook-20260831-153058` | `7.2.0-15302-g780663f0af3b-1` | `amd64`
+| `linux-image-7.2.0-yogabook-20260831-153058` | `7.2.0-15302-g780663f0af3b-1` | `amd64`
+| `sof-topology-yogabook` | `1.0.1` | `all`
+| `halo-keyboard` | `1.0.0-8` | `amd64`
+| `yogabook-sensors` | `1.0.0-9` | `all`
+| `yogabook-camera` | `0.2.22` | `all`
+| `yogabook-gnss` | `1.0.4` | `all`
+| `yogabook-validator` | `0.75.2` | `all`
 | `gnome-control-center` | `1:50.3-0ubuntu0.1+yogabook1` | `amd64`
 | `gnome-control-center-data` | `1:50.3-0ubuntu0.1+yogabook1` | `all`
-| `gir1.2-mutter-18` | `50.1-0ubuntu2.2+yogabook3` | `amd64`
-| `libmutter-18-0` | `50.1-0ubuntu2.2+yogabook3` | `amd64`
-| `mutter-common` | `50.1-0ubuntu2.2+yogabook3` | `all`
-| `mutter-common-bin` | `50.1-0ubuntu2.2+yogabook3` | `amd64`
+| `gir1.2-mutter-18` | `50.1-0ubuntu2.2+yogabook5` | `amd64`
+| `libmutter-18-0` | `50.1-0ubuntu2.2+yogabook5` | `amd64`
+| `mutter-common` | `50.1-0ubuntu2.2+yogabook5` | `all`
+| `mutter-common-bin` | `50.1-0ubuntu2.2+yogabook5` | `amd64`
 |===
 
-The image and headers come from the https://github.com/Yoga-Book/Yoga-Book-Linux-Kernel/releases/tag/v7.2.0-yogabook-20260828-163827[`v7.2.0-yogabook-20260828-163827` kernel release]. All userspace packages come from public, versioned releases in the https://github.com/Yoga-Book[Yoga-Book GitHub organization]. All 15 files are downloaded from exact manifest URLs and SHA256-verified.
+The image and headers come from the https://github.com/Yoga-Book/Yoga-Book-Linux-Kernel/releases/tag/v7.2.0-yogabook-20260831-153058[`v7.2.0-yogabook-20260831-153058` kernel release]. All userspace packages come from public, versioned releases in the https://github.com/Yoga-Book[Yoga-Book GitHub organization]. All 15 files are downloaded from exact manifest URLs and SHA256-verified.
 
 == Default credentials
 
@@ -223,7 +223,7 @@ The required marker is:
 
 [source,text]
 ----
-YOGABOOK_VM_TEST_PASS kernel=7.2.0-yogabook-20260828-163827
+YOGABOOK_VM_TEST_PASS kernel=7.2.0-yogabook-20260831-153058
 ----
 
 It is emitted only after checking the running Yoga Book kernel, the installed `ubuntu-desktop-minimal` profile, absence of the full `ubuntu-desktop` profile, `dpkg --audit`, offline `apt-get check`, all 15 selected packages, and `GRUB_TOP_LEVEL`. QEMU's default firmware exercises the BIOS boot path; `iso:verify` separately verifies that the ISO also retains a UEFI boot entry and GPT metadata.
@@ -283,12 +283,12 @@ EMMC="$(for D in /sys/class/block/mmcblk[0-9]; do test -r "$D/device/name" || co
 test -n "$EMMC"
 test -b "/dev/${EMMC}boot0"
 test -b "/dev/${EMMC}boot1"
-test "$(uname -r)" = 7.2.0-yogabook-20260828-163827
+test "$(uname -r)" = 7.2.0-yogabook-20260831-153058
 sudo dpkg --audit
 sudo apt-get --no-download check
 dpkg-query -W alsa-ucm-conf-yogabook \
-  linux-headers-7.2.0-yogabook-20260828-163827 \
-  linux-image-7.2.0-yogabook-20260828-163827 \
+  linux-headers-7.2.0-yogabook-20260831-153058 \
+  linux-image-7.2.0-yogabook-20260831-153058 \
   sof-topology-yogabook halo-keyboard yogabook-sensors \
   yogabook-camera yogabook-gnss yogabook-validator \
   gnome-control-center gnome-control-center-data \
