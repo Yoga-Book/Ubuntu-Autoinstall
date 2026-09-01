@@ -1,7 +1,6 @@
 #!/bin/sh
 set -u
 
-KERNEL=7.2.0-yogabook-20260831-153058
 STATE_DIR=/var/lib/yogabook-graphical-health
 LOG_DIR=/var/log/yogabook-graphical-health
 LOG_FILE=$LOG_DIR/boot.log
@@ -66,6 +65,7 @@ capture_diagnostics() {
 
 RUNNING_KERNEL=$(uname -r)
 PRODUCT_NAME=$(cat /sys/class/dmi/id/product_name 2>/dev/null || true)
+KERNEL=$RUNNING_KERNEL
 log "Checking product=$PRODUCT_NAME kernel=$RUNNING_KERNEL"
 
 [ "$PRODUCT_NAME" = 'Lenovo YB1-X91L' ] || {
@@ -73,10 +73,13 @@ log "Checking product=$PRODUCT_NAME kernel=$RUNNING_KERNEL"
   exit 0
 }
 
-[ "$RUNNING_KERNEL" = "$KERNEL" ] || {
-  log "Generic or other kernel is running; leaving the boot selection unchanged"
-  exit 0
-}
+case "$RUNNING_KERNEL" in
+  *-yogabook-*) ;;
+  *)
+    log "Generic or other kernel is running; leaving the boot selection unchanged"
+    exit 0
+    ;;
+esac
 
 ATTEMPT=0
 while [ "$ATTEMPT" -lt 24 ]; do

@@ -2,6 +2,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "$0")" && pwd)"
+ROOT_DIR="$(cd -- "$SCRIPT_DIR/.." && pwd)"
 BURN_USB_LIBRARY_ONLY=1 source "$SCRIPT_DIR/burn-usb.sh"
 
 fail() {
@@ -12,6 +13,28 @@ fail() {
 assert_eq() {
   [[ "$1" == "$2" ]] || fail "expected '$2', got '$1'"
 }
+
+assert_eq "$(unset ISO_FILE; production_iso_path)" \
+  'DATA/ISO/remastered/ubuntu-26.04.1-desktop-amd64-autoinstall.iso'
+assert_eq "$(ISO_FILE=DATA/ISO/official/custom-source.iso production_iso_path)" \
+  'DATA/ISO/remastered/custom-source-autoinstall.iso'
+grep -Fqx 'ISO_URL="https://releases.ubuntu.com/26.04/ubuntu-26.04.1-desktop-amd64.iso"' \
+  "$ROOT_DIR/.example.env" || fail '.example.env ISO_URL is not pinned to Ubuntu 26.04.1'
+grep -Fqx 'ISO_FILE="DATA/ISO/official/ubuntu-26.04.1-desktop-amd64.iso"' \
+  "$ROOT_DIR/.example.env" || fail '.example.env ISO_FILE is not aligned with ISO_URL'
+grep -Fqx 'ISO_SHA256="601e30fbf5d97759367c632e2c33630665039b7e2158fd068403da3ccf1bda1f"' \
+  "$ROOT_DIR/.example.env" || fail '.example.env ISO_SHA256 is not the published 26.04.1 digest'
+grep -Fq 'ubuntu-26.04.1-desktop-amd64.iso' "$ROOT_DIR/Taskfile.yaml" \
+  || fail 'Taskfile default is not pinned to Ubuntu 26.04.1'
+for config_path in \
+  "$ROOT_DIR/.example.env" \
+  "$ROOT_DIR/Taskfile.yaml" \
+  "$ROOT_DIR/task/ISO.Taskfile.yaml" \
+  "$ROOT_DIR/scripts/burn-usb.sh"; do
+  if grep -Fq 'ubuntu-26.04-desktop-amd64.iso' "$config_path"; then
+    fail "stale Ubuntu 26.04 ISO filename remains in ${config_path#"$ROOT_DIR/"}"
+  fi
+done
 
 DEVICE_JSON='{
   "blockdevices": [

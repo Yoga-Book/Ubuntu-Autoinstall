@@ -69,6 +69,7 @@ Expected values are `Lenovo YB1-X91L`, exactly one `CJNB4R` disk with removable 
 | Automatic generic-kernel fallback was not needed, or its result is recorded | NO | NOT TESTED
 | `dpkg --audit` is empty | NO | NOT TESTED
 | Offline `apt-get check` passes | NO | NOT TESTED
+| Online `apt-get update` passes after networking is available | NO | NOT TESTED
 | Fifteen selected Yoga Book packages installed | NO | NOT TESTED
 | Embedded package manifest archived | NO | NOT TESTED
 | Installer logs archived | NO | NOT TESTED
@@ -90,6 +91,7 @@ test ! -e /var/lib/yogabook-graphical-health/generic-fallback-configured || \
   cat /var/lib/yogabook-graphical-health/generic-fallback-configured
 sudo dpkg --audit
 sudo apt-get --no-download check
+sudo apt-get update
 dpkg-query -W \
   alsa-ucm-conf-yogabook \
   linux-headers-7.2.0-yogabook-20260831-153058 \

@@ -6,15 +6,44 @@ This document explains how the repository turns pinned upstream inputs into a ca
 
 == Trust and verification model
 
-The pipeline separates five kinds of evidence:
+The pipeline separates six kinds of evidence:
 
 . *Pinned source evidence*: `manifests/yogabook-release-debs.tsv` records the filename, hash, and exact public Yoga-Book GitHub release URL for 13 Ubuntu 26.04 userspace packages and two kernel assets.
 . *Selection evidence*: `manifests/yogabook-selected-packages.tsv` declares the 15 package identities that must be installed.
+. *Device-validation evidence*: `manifests/yogabook-validated-packages.tsv` records the exact 15 package identities from the current physical-tablet acceptance baseline. `deb:preflight` rejects a selected set that differs before cleanup, download, or remastering begins.
 . *Closure evidence*: `DATA/DEB/packages.manifest` records package name, version, architecture, filename, and SHA256 for every generated dependency package.
 . *Image evidence*: the output `.sha256` sidecar and `iso:verify` prove boot metadata and exact embedded files.
 . *Runtime evidence*: VM logs prove unattended offline installation and first boot; the hardware acceptance record proves device behavior.
 
 No single layer substitutes for another. For example, a valid ISO checksum does not prove that touch or suspend works on physical hardware.
+The selected manifest is also the only package-name input to NoCloud rendering:
+the renderer validates its 15 unique identities, derives the single matching
+Yoga Book image/header release, and substitutes both the package list and kernel
+release into `user-data` and `vm-verify.sh`. The tracked templates therefore
+cannot silently retain an older kernel after promotion.
+
+The tracked device-validation manifest must not be edited from a partial run.
+After one Validator release has integrity `PASS`, all 24 components complete,
+and every component status `PASS`, promote its exact inventory explicitly:
+
+[source,shell]
+----
+task promote-validated-stack \
+  REPORT=/path/to/complete-dossier \
+  OUTPUT=manifests/yogabook-validated-packages.tsv \
+  VALIDATOR_DEB=/path/to/yogabook-validator_VERSION_all.deb
+----
+
+The command binds the supplied Validator package to its unique release-manifest
+SHA-256, extracts its renderer and acceptance matrix without installation, and
+regenerates the report from a private copy of the raw dossier. Only regenerated
+fields are authoritative. Promotion additionally requires the exact Yoga Book
+device identity, matching Validator package/version, a completed dossier with
+physical result `PASS`, all canonical components and all three layers `PASS`,
+an empty execution plan, exact equality with the selected 15-package manifest,
+and valid regenerated evidence identities. Any failure leaves the output
+unchanged. This proves internal consistency with trusted code and data; it does
+not replace operator provenance or cryptographic device attestation.
 
 == Authoritative tracked inputs
 
@@ -28,6 +57,7 @@ No single layer substitutes for another. For example, a valid ISO checksum does 
 | `.example.env` | Supported source-ISO configuration example.
 | `manifests/yogabook-release-debs.tsv` | Fifteen pinned upstream filenames, digests, and source URLs.
 | `manifests/yogabook-selected-packages.tsv` | Fifteen required package identities.
+| `manifests/yogabook-validated-packages.tsv` | Fifteen exact package identities from the current physical-tablet validation baseline.
 | `nocloud/user-data` | Production autoinstall, identity, storage, offline package installation, kernel selection, and shutdown.
 | `nocloud/meta-data` | NoCloud instance ID and local hostname.
 | `nocloud/verify-target.sh` | Destructive-storage guard for production and restricted disk guard for tests.
@@ -39,6 +69,7 @@ No single layer substitutes for another. For example, a valid ISO checksum does 
 | `patch/official/boot/grub/` | Autoinstall-first GRUB menus for direct and loopback boot.
 | `scripts/render-autoinstall.sh` | Deterministic production/test NoCloud rendering.
 | `scripts/package-manifest.sh` | Canonical generated package-manifest format.
+| `scripts/promote-validated-stack.sh` | Regenerates raw dossier evidence with a release-bound trusted Validator package and atomically promotes only an exact, complete physical-acceptance inventory.
 | `scripts/burn-usb.sh` | Interactive USB discovery, destructive-write safeguards, raw image writing, and bounded read-back verification.
 | `scripts/validate-subiquity.py` | Validation against the schema extracted from the exact source ISO.
 | `scripts/vm-test.sh` | NIC-less install and installed-disk boot orchestration.
@@ -84,7 +115,7 @@ Production rendering copies `nocloud/user-data` unchanged and writes `guard-mode
 
 The guard fails closed when it cannot determine any required value or finds an ambiguous match. Linux MMC enumeration names are not stable when a microSD is added or removed, so production `user-data` uses `/dev/yogabook-emmc` only as a placeholder. The early command discovers the eMMC, verifies it, and replaces the placeholder in `/autoinstall.yaml`. This follows the https://canonical-subiquity.readthedocs-hosted.com/en/latest/reference/autoinstall-reference.html#early-commands[Subiquity early-command contract]: the file is re-read after early commands and before block-device probing specifically so those commands can alter the configuration.
 
-Production late commands expose the installed GRUB menu for five seconds and enable the graphical health service. The service acts only on DMI `Lenovo YB1-X91L` while the exact custom kernel is running. It waits for a connected and enabled DSI connector, active GDM, and `gnome-shell`; on failure it stores boot evidence under `/var/log/yogabook-graphical-health/`, changes `GRUB_TOP_LEVEL` to the newest preserved generic kernel, and reboots once. A persistent stamp prevents automatic reboot loops. VM renderings carry the source files for deterministic ISO content but do not enable or install the service.
+Production late commands expose the installed GRUB menu for five seconds and enable the graphical health service. The service acts only on DMI `Lenovo YB1-X91L` while a `*-yogabook-*` kernel is running. It waits for a connected and enabled DSI connector, active GDM, and `gnome-shell`; on failure it stores boot evidence under `/var/log/yogabook-graphical-health/`, changes `GRUB_TOP_LEVEL` to the newest preserved generic kernel, and reboots once. A persistent stamp prevents automatic reboot loops. A kernel post-install hook otherwise advances `GRUB_TOP_LEVEL` to the newest installed Yoga Book kernel before GRUB regeneration, but refuses to replace a stamped generic recovery selection. VM renderings carry the same selector for deterministic ISO content, while DMI gating makes it inert outside the tablet.
 
 === VM test
 
@@ -104,6 +135,8 @@ VM-only GRUB patching adds an installer serial console. VM-only late commands re
 . requires clean `dpkg --audit` and `apt-get --no-download check` results.
 
 The target installer recreates that trusted file repository under `/opt/yoga-book-debs`, installs the named packages, verifies the kernel and initramfs, verifies that a generic 7.0 kernel remains, regenerates GRUB, and removes the temporary repository.
+
+The loopback mirror deliberately forces Subiquity onto the installation media while the target is being built. Before shutdown, a fail-closed late command replaces that temporary URI in the installed APT source files with `http://archive.ubuntu.com/ubuntu`; the installed system therefore retains normal online `apt-get update` support after networking becomes available.
 
 The repository is marked `[trusted=yes]` because it is an unsigned local APT repository. Integrity comes from the tracked upstream hashes, generated package manifest, regenerated ISO `md5sum.txt`, and final ISO SHA256—not from an APT repository signature.
 
@@ -143,6 +176,7 @@ Changing Ubuntu releases is not only an `.env` edit. Update and verify:
 
 Update together:
 
+* the 15 exact identities observed on the physically validated tablet in `yogabook-validated-packages.tsv`;
 * all 15 filenames, digests, and source URLs in `yogabook-release-debs.tsv`;
 * all 15 identities in `yogabook-selected-packages.tsv`;
 * named packages and kernel/initramfs checks in `nocloud/user-data`;

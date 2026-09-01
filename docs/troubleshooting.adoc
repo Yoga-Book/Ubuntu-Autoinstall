@@ -205,7 +205,7 @@ sudo journalctl -b -u gdm --no-pager
 sudo journalctl -b -k --no-pager | grep -Ei 'drm|i915|dsi|panel|firmware|error|fail'
 ----
 
-If the generic kernel reaches GNOME and the custom kernel does not, the failure is kernel/i915/DSI-specific. If both kernels expose a healthy connector but `gnome-shell` fails, inspect the GDM journal for a userspace/Mutter failure. To retry the custom kernel manually, restore `GRUB_TOP_LEVEL=/boot/vmlinuz-7.2.0-yogabook-20260831-153058`, run `sudo update-grub`, and choose it from the visible GRUB menu. Do not delete the fallback stamp until its saved evidence has been copied.
+If the generic kernel reaches GNOME and the custom kernel does not, the failure is kernel/i915/DSI-specific. If both kernels expose a healthy connector but `gnome-shell` fails, inspect the GDM journal for a userspace/Mutter failure. To retry the newest installed custom kernel manually after preserving the fallback evidence, remove the fallback stamp and run `sudo yogabook-select-kernel`; the selector updates `GRUB_TOP_LEVEL` and regenerates GRUB atomically. Do not delete the fallback stamp until its saved evidence has been copied.
 
 == Installed system boots the wrong kernel
 
@@ -219,7 +219,7 @@ ls -l /boot/vmlinuz-* /boot/initrd.img-*
 grep -F '7.2.0-yogabook-20260831-153058' /boot/grub/grub.cfg
 ----
 
-The expected top-level setting is `GRUB_TOP_LEVEL=/boot/vmlinuz-7.2.0-yogabook-20260831-153058`. Keep the generic 7.0 kernel as fallback; do not remove it while diagnosing.
+The expected top-level setting names the newest installed `vmlinuz-*-yogabook-*` kernel. Run `sudo yogabook-select-kernel` to refresh it. Keep the generic 7.0 kernel as fallback; do not remove it while diagnosing.
 
 == Collecting evidence
 

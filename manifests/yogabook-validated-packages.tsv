@@ -1,0 +1,15 @@
+alsa-ucm-conf-yogabook	1.6	all
+linux-headers-7.2.0-yogabook-20260831-153058	7.2.0-15302-g780663f0af3b-1	amd64
+linux-image-7.2.0-yogabook-20260831-153058	7.2.0-15302-g780663f0af3b-1	amd64
+sof-topology-yogabook	1.0.1	all
+halo-keyboard	1.0.0-8	amd64
+yogabook-sensors	1.0.0-9	all
+yogabook-camera	0.2.22	all
+yogabook-gnss	1.0.4	all
+yogabook-validator	0.75.2	all
+gnome-control-center	1:50.3-0ubuntu0.1+yogabook1	amd64
+gnome-control-center-data	1:50.3-0ubuntu0.1+yogabook1	all
+gir1.2-mutter-18	50.1-0ubuntu2.2+yogabook5	amd64
+libmutter-18-0	50.1-0ubuntu2.2+yogabook5	amd64
+mutter-common	50.1-0ubuntu2.2+yogabook5	all
+mutter-common-bin	50.1-0ubuntu2.2+yogabook5	amd64

@@ -1,0 +1,81 @@
+#!/bin/sh
+set -eu
+
+ROOT=${YBV_SYSROOT:-}
+UPDATE_GRUB=${YBV_UPDATE_GRUB:-update-grub}
+DEFER_UPDATE=${YBV_DEFER_UPDATE_GRUB:-0}
+SELECTION="$ROOT/etc/default/grub.d/60-yogabook.cfg"
+FALLBACK_STAMP="$ROOT/var/lib/yogabook-graphical-health/generic-fallback-configured"
+PRODUCT_NAME=$(cat "$ROOT/sys/class/dmi/id/product_name" 2>/dev/null || true)
+
+case ${0##*/} in
+  zz-00-yogabook-default) DEFER_UPDATE=1 ;;
+esac
+
+[ "$PRODUCT_NAME" = 'Lenovo YB1-X91L' ] || exit 0
+
+VERSION=${1:-}
+if [ -z "$VERSION" ]; then
+  IMAGE=$(find "$ROOT/boot" -maxdepth 1 -type f -name 'vmlinuz-*-yogabook-*' \
+    | sort -V | tail -n 1)
+  VERSION=${IMAGE##*/vmlinuz-}
+else
+  IMAGE=${2:-$ROOT/boot/vmlinuz-$VERSION}
+fi
+
+case "$VERSION" in
+  *-yogabook-*) ;;
+  *) exit 0 ;;
+esac
+[ -n "$VERSION" ] && [ -s "$IMAGE" ] || exit 0
+
+if [ -e "$FALLBACK_STAMP" ]; then
+  printf 'Yoga Book generic-kernel fallback is active; retaining the recovery selection.\n' >&2
+  exit 0
+fi
+
+EXPECTED="GRUB_TOP_LEVEL=/boot/vmlinuz-$VERSION"
+HAD_SELECTION=0
+[ ! -e "$SELECTION" ] || HAD_SELECTION=1
+CURRENT=$(cat "$SELECTION" 2>/dev/null || true)
+[ "$CURRENT" != "$EXPECTED" ] || exit 0
+
+install -d -m 0755 "${SELECTION%/*}"
+NEW=$(mktemp "$SELECTION.new.XXXXXX")
+ROLLBACK=$(mktemp "$SELECTION.rollback.XXXXXX")
+cleanup() {
+  rm -f -- "$NEW" "$ROLLBACK"
+}
+trap cleanup EXIT HUP INT TERM
+printf '%s\n' "$CURRENT" > "$ROLLBACK"
+printf '%s\n' "$EXPECTED" > "$NEW"
+if [ -e "$SELECTION" ]; then
+  chmod --reference="$SELECTION" "$NEW"
+  chown --reference="$SELECTION" "$NEW"
+else
+  chmod 0644 "$NEW"
+fi
+mv -fT -- "$NEW" "$SELECTION"
+
+if [ "$DEFER_UPDATE" = 1 ]; then
+  printf 'Selected Yoga Book kernel %s; the kernel post-install sequence will regenerate GRUB.\n' "$VERSION"
+  exit 0
+fi
+
+if "$UPDATE_GRUB"; then
+  printf 'Selected Yoga Book kernel %s and regenerated GRUB.\n' "$VERSION"
+  exit 0
+fi
+
+printf 'update-grub failed; restoring the previous Yoga Book boot selection.\n' >&2
+if [ "$HAD_SELECTION" = 1 ]; then
+  NEW=$(mktemp "$SELECTION.new.XXXXXX")
+  cat "$ROLLBACK" > "$NEW"
+  chmod --reference="$SELECTION" "$NEW"
+  chown --reference="$SELECTION" "$NEW"
+  mv -fT -- "$NEW" "$SELECTION"
+else
+  rm -f -- "$SELECTION"
+fi
+"$UPDATE_GRUB" || true
+exit 1

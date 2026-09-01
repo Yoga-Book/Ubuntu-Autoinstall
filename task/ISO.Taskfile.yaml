@@ -65,7 +65,7 @@ tasks:
     cmds:
       - |
         if [ -z "$ISO_FILE" ]; then
-          echo "Error: Please set ISO_FILE in your environment or .env file, e.g. ISO_FILE=DATA/ISO/official/ubuntu-26.04-desktop-amd64.iso" >&2
+          echo "Error: Please set ISO_FILE in your environment or .env file, e.g. ISO_FILE=DATA/ISO/official/ubuntu-26.04.1-desktop-amd64.iso" >&2
           exit 1
         fi
         ISO_BASENAME="$(basename "$ISO_FILE")"
@@ -164,7 +164,7 @@ tasks:
     cmds:
       - |
         if [ -z "$ISO_FILE" ]; then
-          echo "Error: Please set ISO_FILE in your environment or .env file, e.g. ISO_FILE=DATA/ISO/official/ubuntu-26.04-desktop-amd64.iso" >&2
+          echo "Error: Please set ISO_FILE in your environment or .env file, e.g. ISO_FILE=DATA/ISO/official/ubuntu-26.04.1-desktop-amd64.iso" >&2
           exit 1
         fi
         ISO_BASENAME="$(basename "$ISO_FILE")"
@@ -189,7 +189,7 @@ tasks:
     cmds:
       - |
         if [ -z "$ISO_FILE" ]; then
-          echo "Error: Please set ISO_FILE in your environment or .env file, e.g. ISO_FILE=DATA/ISO/official/ubuntu-26.04-desktop-amd64.iso" >&2
+          echo "Error: Please set ISO_FILE in your environment or .env file, e.g. ISO_FILE=DATA/ISO/official/ubuntu-26.04.1-desktop-amd64.iso" >&2
           exit 1
         fi
         ISO_BASENAME="$(basename "$ISO_FILE")"
@@ -218,7 +218,7 @@ tasks:
     cmds:
       - |
         if [ -z "$ISO_FILE" ]; then
-          echo "Error: Please set ISO_FILE in your environment or .env file, e.g. ISO_FILE=DATA/ISO/official/ubuntu-26.04-desktop-amd64.iso" >&2
+          echo "Error: Please set ISO_FILE in your environment or .env file, e.g. ISO_FILE=DATA/ISO/official/ubuntu-26.04.1-desktop-amd64.iso" >&2
           exit 1
         fi
         ISO_BASENAME="$(basename "$ISO_FILE")"
@@ -317,7 +317,10 @@ tasks:
         grep -Fq 'fallback: offline-install' "$VERIFY_DIR/iso/nocloud/user-data"
         grep -Fq 'geoip: false' "$VERIFY_DIR/iso/nocloud/user-data"
         grep -Fq 'shutdown: poweroff' "$VERIFY_DIR/iso/nocloud/user-data"
-        grep -Fq 'GRUB_TOP_LEVEL=/boot/vmlinuz-7.2.0-yogabook-20260831-153058' "$VERIFY_DIR/iso/nocloud/user-data"
+        KERNEL_PACKAGE="$(awk -F '\t' '$1 ~ /^linux-image-.*-yogabook-/ { print $1 }' manifests/yogabook-selected-packages.tsv)"
+        KERNEL_RELEASE="${KERNEL_PACKAGE#linux-image-}"
+        [ -n "$KERNEL_RELEASE" ]
+        grep -Fq "GRUB_TOP_LEVEL=/boot/vmlinuz-$KERNEL_RELEASE" "$VERIFY_DIR/iso/nocloud/user-data"
         grep -Fq '  ./boot/grub/grub.cfg' "$VERIFY_DIR/md5sum.txt"
         grep -Fq '  ./boot/grub/loopback.cfg' "$VERIFY_DIR/md5sum.txt"
         grep -Fq '  ./pool/yoga-book/Packages' "$VERIFY_DIR/md5sum.txt"

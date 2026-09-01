@@ -1,6 +1,11 @@
 version: "3"
 
 tasks:
+  preflight:
+    desc: "Fail unless the ISO-selected packages match the stack validated on the Yoga Book."
+    cmds:
+      - scripts/verify-validated-stack.sh
+
   clean:
     desc: "Remove all downloaded and resolved Yoga Book DEB files and metadata."
     cmds:
@@ -9,6 +14,7 @@ tasks:
   download:
     desc: "Download and verify all 15 pinned Yoga Book package assets."
     cmds:
+      - task: preflight
       - |
         MANIFEST=manifests/yogabook-release-debs.tsv
         UPSTREAM_DIR=DATA/DEB/upstream
@@ -43,6 +49,7 @@ tasks:
   resolve:
     desc: "Build and network-disable-verify a clean Ubuntu 26.04 offline dependency closure."
     cmds:
+      - task: preflight
       - |
         command -v docker >/dev/null 2>&1 || {
           echo "Error: Docker is required by deb:resolve." >&2
@@ -112,27 +119,15 @@ tasks:
 
         docker run --rm --platform linux/amd64 --network none \
           -v "$PACKAGE_DIR:/opt/yoga-book-debs:ro" \
+          -v "$SELECTED_MANIFEST:/opt/yoga-book-selected.tsv:ro" \
           ubuntu:26.04 \
           sh -ceu '
             printf "%s\n" "deb [trusted=yes] file:/opt/yoga-book-debs ./" > /etc/apt/sources.list
             rm -f /etc/apt/sources.list.d/*.sources /etc/apt/sources.list.d/*.list
             apt-get update
-            DEBIAN_FRONTEND=noninteractive apt-get install --yes \
-              alsa-ucm-conf-yogabook \
-              linux-headers-7.2.0-yogabook-20260831-153058 \
-              linux-image-7.2.0-yogabook-20260831-153058 \
-              sof-topology-yogabook \
-              halo-keyboard \
-              yogabook-sensors \
-              yogabook-camera \
-              yogabook-gnss \
-              yogabook-validator \
-              gnome-control-center \
-              gnome-control-center-data \
-              gir1.2-mutter-18 \
-              libmutter-18-0 \
-              mutter-common \
-              mutter-common-bin
+            set -- $(cut -f1 /opt/yoga-book-selected.tsv)
+            test "$#" -eq 15
+            DEBIAN_FRONTEND=noninteractive apt-get install --yes "$@"
             test -z "$(dpkg --audit)"
             apt-get --no-download check
           '
@@ -141,6 +136,7 @@ tasks:
   verify:
     desc: "Verify release assets, selected identities, and the complete generated package manifest."
     cmds:
+      - task: preflight
       - |
         while IFS="$(printf '\t')" read -r EXPECTED_SHA256 NAME SOURCE_URL; do
           printf '%s  %s\n' "$EXPECTED_SHA256" "DATA/DEB/upstream/$NAME" | sha256sum --check

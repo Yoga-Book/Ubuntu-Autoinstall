@@ -24,6 +24,7 @@ tasks:
   build:
     desc: "Clean-build, validate, verify, and checksum the offline Yoga Book autoinstall ISO."
     cmds:
+      - task: deb:preflight
       - task: iso:clean
       - task: iso:download
       - task: deb:download
@@ -74,6 +75,30 @@ tasks:
     desc: "Verify dynamic production eMMC discovery and storage-target patching."
     cmds:
       - scripts/test-verify-target.sh
+
+  test-package-stack:
+    desc: "Verify fail-closed matching of selected and tablet-validated package identities."
+    cmds:
+      - scripts/test-validated-stack.sh
+
+  test-kernel-selection:
+    desc: "Verify dynamic Yoga Book GRUB selection after kernel package updates."
+    cmds:
+      - scripts/test-select-yogabook-kernel.sh
+
+  promote-validated-stack:
+    desc: "Regenerate and verify a complete physical-acceptance dossier with a trusted Validator package before atomic promotion."
+    requires:
+      vars:
+        - REPORT
+        - OUTPUT
+        - VALIDATOR_DEB
+    env:
+      YBV_PROMOTION_REPORT: '{{.REPORT}}'
+      YBV_PROMOTION_OUTPUT: '{{.OUTPUT}}'
+      YBV_PROMOTION_VALIDATOR_DEB: '{{.VALIDATOR_DEB}}'
+    cmds:
+      - scripts/promote-validated-stack.sh "$YBV_PROMOTION_REPORT" "$YBV_PROMOTION_OUTPUT" "$YBV_PROMOTION_VALIDATOR_DEB"
 
   password-check:
     aliases:

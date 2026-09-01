@@ -18,7 +18,7 @@ human_size() {
 
 production_iso_path() {
   local source basename
-  source="${ISO_FILE:-DATA/ISO/official/ubuntu-26.04-desktop-amd64.iso}"
+  source="${ISO_FILE:-DATA/ISO/official/ubuntu-26.04.1-desktop-amd64.iso}"
   basename="$(basename "$source")"
   [[ "$basename" == *.iso ]] || die "ISO_FILE must end in .iso: $source"
   printf 'DATA/ISO/remastered/%s-autoinstall.iso\n' "${basename%.iso}"

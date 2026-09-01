@@ -17,7 +17,11 @@ The production installer refuses to configure storage unless all of these checks
 * that disk exposes matching `boot0` and `boot1` devices, distinguishing it from the `ED4QT` microSD;
 * `mokutil` explicitly reports that Secure Boot is disabled.
 
-Secure Boot must remain disabled because `7.2.0-yogabook-20260831-153058` is unsigned. The installer selects that kernel through `GRUB_TOP_LEVEL`; Ubuntu's generic 7.0 kernel remains installed as a fallback.
+Secure Boot must remain disabled because the Yoga Book kernel is unsigned. The
+installer selects its pinned kernel through `GRUB_TOP_LEVEL`; a kernel
+post-install hook advances that selection only to a newer installed
+`*-yogabook-*` kernel. Ubuntu's generic 7.0 kernel remains installed as a
+fallback, and the hook never overrides an active graphical-health fallback.
 
 Camera and X91L LTE support are new in this release and require physical acceptance testing. See <<known-limitations>>.
 
@@ -109,8 +113,8 @@ cp .example.env .env
 [cols="2,3,2",options="header"]
 |===
 | Variable | Meaning | Default
-| `ISO_URL` | Source Ubuntu Desktop ISO URL. The basename determines the downloaded filename. | Ubuntu 26.04 Desktop amd64 release URL
-| `ISO_FILE` | Local source ISO consumed by extract, remaster, verify, and VM tasks. Keep it consistent with `ISO_URL`. | `DATA/ISO/official/ubuntu-26.04-desktop-amd64.iso`
+| `ISO_URL` | Source Ubuntu Desktop ISO URL. The basename determines the downloaded filename. | Ubuntu 26.04.1 Desktop amd64 release URL
+| `ISO_FILE` | Local source ISO consumed by extract, remaster, verify, and VM tasks. Keep it consistent with `ISO_URL`. | `DATA/ISO/official/ubuntu-26.04.1-desktop-amd64.iso`
 | `ISO_SHA256` | Expected source-ISO digest. If unset, `iso:download` reads `SHA256SUMS` beside `ISO_URL`. | unset in Task; pinned in `.example.env`
 | `ISO_FORCE_VERIFY` | Set to `1` to bypass the verified-file metadata cache and hash the source ISO again. | `0`
 |===
@@ -142,8 +146,8 @@ Default-build output:
 
 [source,text]
 ----
-DATA/ISO/remastered/ubuntu-26.04-desktop-amd64-autoinstall.iso
-DATA/ISO/remastered/ubuntu-26.04-desktop-amd64-autoinstall.iso.sha256
+DATA/ISO/remastered/ubuntu-26.04.1-desktop-amd64-autoinstall.iso
+DATA/ISO/remastered/ubuntu-26.04.1-desktop-amd64-autoinstall.iso.sha256
 ----
 
 The ISO filesystem volume label is `Ubuntu-26.04-Yoga-Book`; desktop environments use this as the USB display name after the image is written.
@@ -153,7 +157,7 @@ Verify the sidecar before copying the image:
 [source,shell]
 ----
 cd DATA/ISO/remastered
-sha256sum --check ubuntu-26.04-desktop-amd64-autoinstall.iso.sha256
+sha256sum --check ubuntu-26.04.1-desktop-amd64-autoinstall.iso.sha256
 ----
 
 To write the existing verified production image to a USB disk without rebuilding it, run:
@@ -187,8 +191,8 @@ This runs the same clean build but renders `/dev/vda`, writes `guard-mode=test`,
 
 [source,text]
 ----
-DATA/ISO/remastered/ubuntu-26.04-desktop-amd64-test-autoinstall.iso
-DATA/ISO/remastered/ubuntu-26.04-desktop-amd64-test-autoinstall.iso.sha256
+DATA/ISO/remastered/ubuntu-26.04.1-desktop-amd64-test-autoinstall.iso
+DATA/ISO/remastered/ubuntu-26.04.1-desktop-amd64-test-autoinstall.iso.sha256
 ----
 
 WARNING: Never write a `*-test-autoinstall.iso` to physical installation media. Test mode deliberately bypasses the DMI, eMMC-model, and Secure Boot checks so QEMU can exercise the installer.
@@ -286,6 +290,7 @@ test -b "/dev/${EMMC}boot1"
 test "$(uname -r)" = 7.2.0-yogabook-20260831-153058
 sudo dpkg --audit
 sudo apt-get --no-download check
+sudo apt-get update
 dpkg-query -W alsa-ucm-conf-yogabook \
   linux-headers-7.2.0-yogabook-20260831-153058 \
   linux-image-7.2.0-yogabook-20260831-153058 \
@@ -298,6 +303,37 @@ sudo cat /var/log/yogabook-graphical-health/boot.log
 ----
 
 Manually verify touch keyboard, pen-mode switching, sound, rotation sensors, Wi-Fi, Bluetooth, front and rear camera streaming, LTE, GNSS, suspend/resume, and reboot. The result remains *NOT RECOVERY-READY* until every required field has evidence and the overall status is updated.
+
+Do not edit `manifests/yogabook-validated-packages.tsv` from a partial
+Validator run. Once a same-release dossier reports integrity `PASS`, complete
+24/24 component acceptance, and every component `PASS`, promote its exact
+package inventory to an explicit output path:
+
+[source,shell]
+----
+task promote-validated-stack \
+  REPORT=/path/to/complete-dossier \
+  OUTPUT=manifests/yogabook-validated-packages.tsv \
+  VALIDATOR_DEB=/path/to/yogabook-validator_VERSION_all.deb
+----
+
+The Validator package must occur exactly once with the same SHA-256 in
+`manifests/yogabook-release-debs.tsv`. The task extracts that trusted package
+without installing it, regenerates the report from copied raw evidence with its
+bundled acceptance matrix, and then verifies device identity, Validator version,
+dossier/physical results, every canonical component and layer, the exact
+15-package selected inventory, and every regenerated evidence hash. It never
+trusts acceptance fields or hashes supplied by the input `report.json`.
+Failure, tampering, or a concurrent source change leaves the output unchanged.
+
+The NoCloud files are templates rather than a second package list. During every
+production or VM render, `scripts/render-autoinstall.sh` reads the fixed
+`manifests/yogabook-selected-packages.tsv` trust anchor, validates exactly 15
+unique identities, requires one matching Yoga Book image/header pair, and
+injects those package names and the derived kernel release into `user-data` and
+the VM verifier. ISO verification derives the same kernel dynamically. This
+prevents a successfully promoted stack from leaving stale package or GRUB names
+inside the remastered image.
 
 == Task reference
 
@@ -331,10 +367,13 @@ Run `task --list-all` for the live command list.
 | `task iso:rm-extract` | Remove extracted ISO trees while retaining `.gitkeep`.
 | `task iso:rm-remaster` | Remove remastered ISO files and sidecars while retaining `.gitkeep`.
 | `task deb:download` | Download and verify all 15 pinned upstream package files.
+| `task deb:preflight` | Fail unless the selected identities exactly match the physical-tablet validation baseline.
 | `task deb:resolve` | Select 15 identities, resolve dependencies, and prove offline installation.
 | `task deb:verify` | Recheck source assets, package identities, manifest, and APT index.
 | `task deb:embed` | Copy the verified closure and indexes into the extracted ISO.
 | `task deb:clean` | Remove all downloaded and resolved files under `DATA/DEB` while preserving tracked `.gitkeep` files.
+| `task test-package-stack` | Exercise package matching plus trusted regeneration and fail-closed physical-acceptance promotion.
+| `task promote-validated-stack REPORT=... OUTPUT=... VALIDATOR_DEB=...` | Regenerate a dossier with the release-manifest-bound Validator and atomically promote only its verified complete physical-acceptance inventory.
 | `task password-hash` / `task ph` | Generate a SHA-512 crypt hash for manual `user-data` customization.
 | `task password-check` / `task pc` | Check a password against a crypt hash.
 |===
@@ -404,7 +443,7 @@ When a VM test is running, inspect the serial log rather than assuming a quiet t
 
 link:docs/architecture.adoc[`docs/architecture.adoc`] describes the trust boundaries, source tree, build stages, manifests, safety invariants, and update procedure. The short version is:
 
-* tracked manifests define immutable upstream inputs and selected package identities;
+* tracked manifests define immutable upstream inputs, selected package identities, and the physical-tablet validation baseline;
 * `nocloud/user-data` defines the production install;
 * test rendering changes only the target disk and guard mode;
 * build-time verification proves the exact ISO contents;
